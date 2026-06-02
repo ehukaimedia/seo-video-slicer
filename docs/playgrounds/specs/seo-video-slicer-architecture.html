@@ -6,15 +6,15 @@
 <title>SEO Video Slicer — Architecture &amp; Spec Seed</title>
 <style>
   /* ============================================================
-     IMPECCABLE TOKENS (ported verbatim from
-     frontend/src/styles/impeccable-tokens.css)
-     Light editorial chrome. The ONLY vibrant color is Editorial
-     Magenta, used on <10% of the surface. One Voice Rule.
+     THE DARK INSTRUMENT — tokens mirrored from /DESIGN.md
+     (the design system of record; theme.css is its 1:1 port).
+     Void-Black canvas, Panel-Deep panels, Hairline seams, three
+     inks, and ONE accent: Electric Blue, used on <10% of the
+     surface. The One Accent Rule.
      ============================================================ */
   :root {
-    --font-display: 'Cormorant Garamond', Georgia, serif;
-    --font-body: 'Instrument Sans', system-ui, sans-serif;
-    --font-mono: 'Space Grotesk', ui-monospace, monospace;
+    --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+    --font-mono: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, monospace;
 
     --spacing-xs: 8px;
     --spacing-sm: 16px;
@@ -27,33 +27,35 @@
     --width-max: 1400px;
     --width-content: 900px;
 
-    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);   /* --ease-out-expo */
     --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
     --duration-fast: 0.15s;
-    --duration-base: 0.3s;
-    --duration-slow: 0.6s;
+    --duration-base: 0.2s;
+    --duration-slow: 0.4s;
 
-    /* Core neutrals — light editorial */
-    --color-ink: oklch(10% 0 0);          /* Deep Graphite */
-    --color-charcoal: oklch(25% 0 0);     /* Soft Charcoal */
-    --color-ash: oklch(55% 0 0);          /* Mid Ash */
-    --color-paper: oklch(98% 0 0);        /* Crisp Paper White */
-    --color-cream: oklch(96% 0.005 350);  /* Warm Ash Cream (page) */
-    --color-mist: oklch(92% 0 0);         /* Paper Mist (hairlines) */
+    /* Surfaces — the dark stage */
+    --bg: oklch(8% 0 0);             /* Void Black (page canvas) */
+    --panel-deep: oklch(15% 0 0);    /* Panel Deep (cards, panels, inputs) */
+    --hairline: oklch(22% 0 0);      /* Hairline (1px seams, dividers) */
 
-    /* Accent — Editorial Magenta (the single vibrant voice) */
-    --color-accent: oklch(60% 0.25 350);
-    --color-accent-hover: oklch(52% 0.25 350);
-    --color-accent-whisper: oklch(60% 0.25 350 / 0.15);
-    --color-accent-veil: oklch(60% 0.25 350 / 0.25);
+    /* Inks */
+    --ink-primary: oklch(98% 0 0);   /* headings, white-pill CTA */
+    --ink-secondary: oklch(75% 0 0); /* body copy, control labels */
+    --ink-muted: oklch(55% 0 0);     /* captions, mono labels, badges */
 
-    /* Media stage — the ONE place a dark surface is permitted, so
-       extracted frames grade true (Premiere/DaVinci standard, §7). */
-    /* Media-stage tokens mirrored from /DESIGN.md (system of record) — neutral dark, never warm */
-    --stage-dark: oklch(20% 0 0);
-    --stage-dark-deep: oklch(14% 0 0);
-    --stage-ink-inv: oklch(92% 0 0);
-    --stage-ink-dim: oklch(70% 0 0);
+    /* Accent — Electric Blue (the single voice) */
+    --accent: oklch(65% 0.20 250);
+    --accent-hover: oklch(65% 0.20 250 / 0.3);
+    --accent-whisper: oklch(65% 0.20 250 / 0.15);
+    --accent-veil: oklch(65% 0.20 250 / 0.4);
+
+    /* Media stage — the deepest surface (Void Black against the
+       Panel-Deep chrome) so extracted frames grade true against
+       neutral darkness (Premiere/DaVinci standard, §7). The whole
+       app is dark; the stage is simply the grading bench. */
+    --stage-deep: oklch(8% 0 0);
+    --stage-ink: oklch(98% 0 0);
+    --stage-ink-dim: oklch(75% 0 0);
   }
 
   *, *::before, *::after { box-sizing: border-box; }
@@ -63,11 +65,11 @@
   html { scroll-behavior: smooth; }
 
   body {
-    font-family: var(--font-body);
+    font-family: var(--font-sans);
     font-size: 1rem;
     line-height: 1.6;                 /* The 1.6 Leading Rule */
-    color: var(--color-ink);
-    background: var(--color-cream);   /* Paper-Not-White Rule */
+    color: var(--ink-secondary);
+    background: var(--bg);            /* Void-Black-Not-Pure-Black Rule */
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
@@ -79,94 +81,99 @@
     padding: 0 var(--spacing-lg);
   }
 
-  section { padding: var(--spacing-2xl) 0; border-top: 1px solid var(--color-mist); }
+  section { padding: var(--spacing-2xl) 0; border-top: 1px solid var(--hairline); }
   section:first-of-type { border-top: none; }
 
   .lede { max-width: 72ch; }
 
-  /* ---- Type scale ------------------------------------------ */
+  /* ---- Type scale — bold system-sans, no serif, no webfonts -- */
   .display {
-    font-family: var(--font-display);
-    font-weight: 300;
-    font-style: italic;
+    font-family: var(--font-sans);
+    font-weight: 700;                 /* The Bold-Display Rule */
     font-size: clamp(2.5rem, 7vw, 4.5rem);
     line-height: 1;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
+    color: var(--ink-primary);
   }
   h2.headline {
-    font-family: var(--font-display);
-    font-weight: 400;
+    font-family: var(--font-sans);
+    font-weight: 700;
     font-size: clamp(1.75rem, 4vw, 2.5rem);
-    line-height: 1.2;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    color: var(--ink-primary);
     margin-bottom: var(--spacing-md);
   }
   h3.title {
-    font-family: var(--font-display);
-    font-weight: 400;
+    font-family: var(--font-sans);
+    font-weight: 600;
     font-size: clamp(1.125rem, 2.5vw, 1.6rem);
     line-height: 1.3;
+    letter-spacing: -0.01em;
+    color: var(--ink-primary);
     margin-bottom: var(--spacing-sm);
   }
   h4.subtitle {
-    font-family: var(--font-body);
+    font-family: var(--font-sans);
     font-weight: 600;
     font-size: 1.0625rem;
+    color: var(--ink-primary);
     margin-bottom: var(--spacing-xs);
   }
   p { max-width: 72ch; }
   p + p { margin-top: var(--spacing-sm); }
 
   .label {
-    font-family: var(--font-body);
+    font-family: var(--font-mono);
     font-weight: 500;
     font-size: 0.9rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
   .micro {
-    font-family: var(--font-body);
+    font-family: var(--font-mono);
     font-weight: 500;
     font-size: 0.6875rem;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    color: var(--color-ash);
+    color: var(--ink-muted);
   }
   .mono { font-family: var(--font-mono); font-size: 0.8125rem; }
   code, .code {
     font-family: var(--font-mono);
     font-size: 0.8125em;
-    background: var(--color-paper);
-    border: 1px solid var(--color-mist);
+    background: var(--panel-deep);
+    border: 1px solid var(--hairline);
     border-radius: 4px;
     padding: 1px 6px;
   }
-  .accent { color: var(--color-accent); }
-  em.voice { font-style: italic; color: var(--color-charcoal); }
+  .accent { color: var(--accent); }
+  em.voice { font-style: italic; color: var(--ink-secondary); }
 
   /* ---- Header ---------------------------------------------- */
   header.site {
     position: sticky; top: 0; z-index: 20;
-    background: var(--color-cream);
-    border-bottom: 1px solid var(--color-mist);
+    background: var(--bg);
+    border-bottom: 1px solid var(--hairline);
     height: 62px;
     display: flex; align-items: center;
   }
   header.site .wrap { display: flex; align-items: center; justify-content: space-between; width: 100%; }
   .brand { display: flex; align-items: baseline; gap: 10px; }
-  .brand .mark { font-family: var(--font-display); font-style: italic; font-weight: 400; font-size: 1.25rem; }
-  .brand .kind { font-family: var(--font-mono); font-size: 0.6875rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-ash); }
+  .brand .mark { font-family: var(--font-sans); font-weight: 700; letter-spacing: -0.02em; font-size: 1.25rem; color: var(--ink-primary); }
+  .brand .kind { font-family: var(--font-mono); font-size: 0.6875rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-muted); }
   nav.toc { display: flex; gap: var(--spacing-md); }
   nav.toc a {
-    font-size: 0.85rem; font-weight: 500; color: var(--color-charcoal);
+    font-size: 0.85rem; font-weight: 500; color: var(--ink-secondary);
     text-decoration: none; transition: color var(--duration-fast) linear;
   }
-  nav.toc a:hover { color: var(--color-accent); }
+  nav.toc a:hover { color: var(--accent); }
   @media (max-width: 880px) { nav.toc { display: none; } }
 
   /* ---- Hero ------------------------------------------------ */
   .hero { padding-top: var(--spacing-2xl); padding-bottom: var(--spacing-xl); }
-  .hero .kicker { color: var(--color-accent); margin-bottom: var(--spacing-md); }
-  .hero p.lead { font-size: 1.125rem; color: var(--color-charcoal); margin-top: var(--spacing-md); }
+  .hero .kicker { color: var(--accent); margin-bottom: var(--spacing-md); }
+  .hero p.lead { font-size: 1.125rem; color: var(--ink-secondary); margin-top: var(--spacing-md); }
 
   /* ---- Intent inversion ------------------------------------ */
   .inversion {
@@ -175,164 +182,164 @@
   }
   @media (max-width: 760px) { .inversion { grid-template-columns: 1fr; } .inversion .arrow { transform: rotate(90deg); justify-self: center; } }
   .panel {
-    background: var(--color-paper);
-    border: 1px solid var(--color-mist);
+    background: var(--panel-deep);
+    border: 1px solid var(--hairline);
     padding: var(--spacing-lg);
   }
-  .panel.was { border-style: dashed; color: var(--color-ash); }
-  .panel.was h4 { color: var(--color-ash); }
-  .panel.now { border-color: var(--color-accent-veil); box-shadow: 0 20px 60px var(--color-accent-whisper); }
+  .panel.was { border-style: dashed; color: var(--ink-muted); }
+  .panel.was h4 { color: var(--ink-muted); }
+  .panel.now { border-color: var(--accent-veil); box-shadow: 0 0 20px var(--accent-whisper); }  /* the rare glow-glow */
   .panel ul { margin: var(--spacing-sm) 0 0; padding-left: 1.1em; }
   .panel li { margin-bottom: 6px; font-size: 0.95rem; }
-  .panel.was li { text-decoration: line-through; text-decoration-color: var(--color-mist); }
-  .arrow { display: flex; align-items: center; font-family: var(--font-mono); font-size: 1.5rem; color: var(--color-accent); }
+  .panel.was li { text-decoration: line-through; text-decoration-color: var(--hairline); }
+  .arrow { display: flex; align-items: center; font-family: var(--font-mono); font-size: 1.5rem; color: var(--accent); }
 
   /* ---- Three framings (SEO / token / contract) ------------- */
   .framings { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing-md); margin-top: var(--spacing-lg); }
   @media (max-width: 760px) { .framings { grid-template-columns: 1fr; } }
-  .framings .f { padding: var(--spacing-md); border-top: 2px solid var(--color-ink); }
-  .framings .f.lead-f { border-top-color: var(--color-accent); }
-  .framings .f .n { font-family: var(--font-mono); font-size: 0.75rem; color: var(--color-ash); }
+  .framings .f { padding: var(--spacing-md); border-top: 2px solid var(--ink-muted); }
+  .framings .f.lead-f { border-top-color: var(--accent); }
+  .framings .f .n { font-family: var(--font-mono); font-size: 0.75rem; color: var(--ink-muted); }
   .framings .f h4 { margin-top: 6px; }
 
   /* ---- Architecture map ------------------------------------ */
-  .map-note { color: var(--color-ash); font-size: 0.9rem; margin-bottom: var(--spacing-lg); }
+  .map-note { color: var(--ink-muted); font-size: 0.9rem; margin-bottom: var(--spacing-lg); }
   .layers { display: flex; flex-direction: column; gap: var(--spacing-md); }
   .layer {
-    background: var(--color-paper);
-    border: 1px solid var(--color-mist);
+    background: var(--panel-deep);
+    border: 1px solid var(--hairline);
     padding: var(--spacing-md) var(--spacing-lg);
     display: grid; grid-template-columns: 200px 1fr; gap: var(--spacing-lg); align-items: center;
   }
   @media (max-width: 700px) { .layer { grid-template-columns: 1fr; gap: var(--spacing-xs); } }
   .layer .lname { display: flex; flex-direction: column; gap: 4px; }
-  .layer .lname .tier { font-family: var(--font-mono); font-size: 0.7rem; color: var(--color-ash); letter-spacing: 0.08em; }
-  .layer .lname strong { font-family: var(--font-display); font-style: normal; font-weight: 500; font-size: 1.15rem; }
-  .layer .ldesc { font-size: 0.92rem; color: var(--color-charcoal); }
+  .layer .lname .tier { font-family: var(--font-mono); font-size: 0.7rem; color: var(--ink-muted); letter-spacing: 0.08em; }
+  .layer .lname strong { font-family: var(--font-sans); font-weight: 700; letter-spacing: -0.01em; font-size: 1.15rem; color: var(--ink-primary); }
+  .layer .ldesc { font-size: 0.92rem; color: var(--ink-secondary); }
   .layer .ldesc .stack { display: inline-block; margin-top: 6px; }
-  .layer.stage { background: var(--stage-dark); color: var(--stage-ink-inv); border-color: var(--stage-dark-deep); }
-  .layer.stage .lname strong { color: var(--stage-ink-inv); }
+  .layer.stage { background: var(--stage-deep); color: var(--stage-ink); border-color: var(--hairline); }
+  .layer.stage .lname strong { color: var(--stage-ink); }
   .layer.stage .ldesc { color: var(--stage-ink-dim); }
-  .layer.contract { border-color: var(--color-accent-veil); border-width: 1px; box-shadow: 0 20px 60px var(--color-accent-whisper); }
-  .flowdown { text-align: center; font-family: var(--font-mono); color: var(--color-accent); font-size: 1.1rem; line-height: 1; }
+  .layer.contract { border-color: var(--accent-veil); border-width: 1px; box-shadow: 0 0 20px var(--accent-whisper); }  /* the rare glow-glow */
+  .flowdown { text-align: center; font-family: var(--font-mono); color: var(--accent); font-size: 1.1rem; line-height: 1; }
   .edge {
     display: block; margin-top: 6px; font-family: var(--font-mono);
-    font-size: 0.7rem; color: var(--color-ash); letter-spacing: 0.02em;
+    font-size: 0.7rem; color: var(--ink-muted); letter-spacing: 0.02em;
   }
-  .edge b { color: var(--color-charcoal); font-weight: 500; }
+  .edge b { color: var(--ink-secondary); font-weight: 500; }
 
   /* ---- Pipeline (SVG-ish horizontal) ----------------------- */
   .pipeline { margin-top: var(--spacing-xl); }
   .pipe-track {
     display: flex; align-items: stretch; gap: 0; overflow-x: auto;
-    border: 1px solid var(--color-mist); background: var(--color-paper);
+    border: 1px solid var(--hairline); background: var(--panel-deep);
   }
   .pstep {
     flex: 1 0 auto; min-width: 120px; padding: var(--spacing-md) var(--spacing-sm);
-    text-align: center; border-right: 1px solid var(--color-mist); position: relative;
+    text-align: center; border-right: 1px solid var(--hairline); position: relative;
   }
   .pstep:last-child { border-right: none; }
-  .pstep .pn { font-family: var(--font-mono); font-size: 0.65rem; color: var(--color-ash); }
-  .pstep .pt { font-family: var(--font-display); font-style: normal; font-weight: 500; font-size: 1rem; margin-top: 4px; }
-  .pstep .pm { font-family: var(--font-mono); font-size: 0.65rem; color: var(--color-accent); margin-top: 6px; }
-  .pstep.terminal { background: var(--color-accent); }
-  .pstep.terminal .pn, .pstep.terminal .pt, .pstep.terminal .pm { color: var(--color-paper); }
+  .pstep .pn { font-family: var(--font-mono); font-size: 0.65rem; color: var(--ink-muted); }
+  .pstep .pt { font-family: var(--font-sans); font-weight: 700; letter-spacing: -0.01em; font-size: 1rem; color: var(--ink-primary); margin-top: 4px; }
+  .pstep .pm { font-family: var(--font-mono); font-size: 0.65rem; color: var(--accent); margin-top: 6px; }
+  .pstep.terminal { background: var(--accent); }
+  .pstep.terminal .pn, .pstep.terminal .pt, .pstep.terminal .pm { color: var(--bg); }
 
   /* ---- Spec seed: current vs target ------------------------ */
   .cvt { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); margin-top: var(--spacing-md); }
   @media (max-width: 760px) { .cvt { grid-template-columns: 1fr; } }
-  .cvt .col { padding: var(--spacing-md); background: var(--color-paper); border: 1px solid var(--color-mist); }
-  .cvt .col.now { border-top: 2px solid var(--color-ash); }
-  .cvt .col.target { border-top: 2px solid var(--color-accent); }
+  .cvt .col { padding: var(--spacing-md); background: var(--panel-deep); border: 1px solid var(--hairline); }
+  .cvt .col.now { border-top: 2px solid var(--ink-muted); }
+  .cvt .col.target { border-top: 2px solid var(--accent); }
   .cvt ul { margin: var(--spacing-sm) 0 0; padding-left: 1.1em; }
   .cvt li { margin-bottom: 8px; font-size: 0.93rem; }
 
   /* ---- Tables ---------------------------------------------- */
   table { width: 100%; border-collapse: collapse; margin-top: var(--spacing-md); font-size: 0.9rem; }
   caption { text-align: left; }
-  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--color-mist); vertical-align: top; }
-  thead th { font-family: var(--font-body); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-ash); border-bottom: 1px solid var(--color-ink); }
-  tbody tr:hover { background: var(--color-cream); }
-  td .ref { font-family: var(--font-mono); font-size: 0.78rem; color: var(--color-accent); white-space: nowrap; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+  thead th { font-family: var(--font-mono); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-muted); border-bottom: 1px solid var(--hairline); }
+  tbody tr:hover { background: var(--panel-deep); }
+  td .ref { font-family: var(--font-mono); font-size: 0.78rem; color: var(--accent); white-space: nowrap; }
   td .verb { font-family: var(--font-mono); font-size: 0.78rem; font-weight: 500; }
 
   /* endpoint list */
-  .endpoints { font-family: var(--font-mono); font-size: 0.82rem; background: var(--color-paper); border: 1px solid var(--color-mist); padding: var(--spacing-md) var(--spacing-lg); margin-top: var(--spacing-md); overflow-x: auto; }
+  .endpoints { font-family: var(--font-mono); font-size: 0.82rem; background: var(--panel-deep); border: 1px solid var(--hairline); padding: var(--spacing-md) var(--spacing-lg); margin-top: var(--spacing-md); overflow-x: auto; }
   .endpoints .row { display: grid; grid-template-columns: 64px minmax(280px, 1fr) auto; gap: var(--spacing-sm); padding: 4px 0; align-items: baseline; }
   .endpoints .m { font-weight: 500; }
-  .endpoints .m.post { color: var(--color-accent); }
-  .endpoints .m.get { color: var(--color-charcoal); }
-  .endpoints .path { color: var(--color-ink); }
-  .endpoints .ret { color: var(--color-ash); font-size: 0.72rem; }
-  .endpoints .drop { color: var(--color-ash); border-top: 1px dashed var(--color-mist); margin-top: 8px; padding-top: 8px; display: block; }
+  .endpoints .m.post { color: var(--accent); }
+  .endpoints .m.get { color: var(--ink-secondary); }
+  .endpoints .path { color: var(--ink-primary); }
+  .endpoints .ret { color: var(--ink-muted); font-size: 0.72rem; }
+  .endpoints .drop { color: var(--ink-muted); border-top: 1px dashed var(--hairline); margin-top: 8px; padding-top: 8px; display: block; }
 
   /* ---- Gates G1–G7 ----------------------------------------- */
   .gates { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--spacing-sm); margin-top: var(--spacing-md); }
   @media (max-width: 700px) { .gates { grid-template-columns: 1fr; } }
-  .gate { display: grid; grid-template-columns: 48px 1fr; gap: var(--spacing-sm); padding: var(--spacing-sm); background: var(--color-paper); border: 1px solid var(--color-mist); align-items: start; }
-  .gate .gid { font-family: var(--font-mono); font-weight: 500; font-size: 1rem; color: var(--color-accent); }
+  .gate { display: grid; grid-template-columns: 48px 1fr; gap: var(--spacing-sm); padding: var(--spacing-sm); background: var(--panel-deep); border: 1px solid var(--hairline); align-items: start; }
+  .gate .gid { font-family: var(--font-mono); font-weight: 500; font-size: 1rem; color: var(--accent); }
   .gate .gtxt { font-size: 0.88rem; }
   .gate .gtxt strong { font-weight: 600; }
 
   /* ---- Package contract tree ------------------------------- */
   .contract-grid { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: var(--spacing-xl); margin-top: var(--spacing-md); align-items: start; }
   @media (max-width: 820px) { .contract-grid { grid-template-columns: 1fr; } }
-  .tree { font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.9; background: var(--color-paper); color: var(--color-ink); padding: var(--spacing-md) var(--spacing-lg); border: 1px solid var(--color-mist); white-space: pre; overflow-x: auto; }
-  .tree .dir { color: var(--color-charcoal); }
-  .tree .file { color: var(--color-ink); }
-  .tree .cm { color: var(--color-ash); }
-  .tree .star { color: var(--color-accent); }
+  .tree { font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.9; background: var(--panel-deep); color: var(--ink-primary); padding: var(--spacing-md) var(--spacing-lg); border: 1px solid var(--hairline); white-space: pre; overflow-x: auto; }
+  .tree .dir { color: var(--ink-secondary); }
+  .tree .file { color: var(--ink-primary); }
+  .tree .cm { color: var(--ink-muted); }
+  .tree .star { color: var(--accent); }
   .zones { display: grid; gap: var(--spacing-md); }
-  .zone { padding: var(--spacing-md); background: var(--color-paper); border: 1px solid var(--color-mist); }
-  .zone.locked { border-top: 2px solid var(--color-ink); }
-  .zone.safe { border-top: 2px solid var(--color-accent); }
+  .zone { padding: var(--spacing-md); background: var(--panel-deep); border: 1px solid var(--hairline); }
+  .zone.locked { border-top: 2px solid var(--ink-muted); }
+  .zone.safe { border-top: 2px solid var(--accent); }
   .zone h4 { display: flex; align-items: center; gap: 8px; }
   .zone .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: var(--spacing-sm); }
-  .chip { font-family: var(--font-mono); font-size: 0.72rem; padding: 4px 10px; border-radius: 4px; border: 1px solid var(--color-mist); background: var(--color-cream); }
-  .zone.safe .chip { border-color: var(--color-accent-veil); }
+  .chip { font-family: var(--font-mono); font-size: 0.72rem; padding: 4px 10px; border-radius: 4px; border: 1px solid var(--hairline); background: var(--bg); }
+  .zone.safe .chip { border-color: var(--accent-veil); }
 
   /* ---- Budget meter ---------------------------------------- */
-  .budget { margin-top: var(--spacing-md); padding: var(--spacing-lg); background: var(--color-paper); border: 1px solid var(--color-mist); }
+  .budget { margin-top: var(--spacing-md); padding: var(--spacing-lg); background: var(--panel-deep); border: 1px solid var(--hairline); }
   .meter-controls { display: flex; flex-wrap: wrap; gap: var(--spacing-lg); align-items: flex-end; margin-bottom: var(--spacing-lg); }
   .ctl { display: flex; flex-direction: column; gap: 6px; }
-  .ctl label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-ash); font-weight: 500; }
-  .ctl input[type=range] { width: 220px; accent-color: var(--color-accent); }
+  .ctl label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-muted); font-weight: 500; }
+  .ctl input[type=range] { width: 220px; accent-color: var(--accent); }
   .ctl .val { font-family: var(--font-mono); font-size: 0.95rem; }
-  .ctl .val b { color: var(--color-accent); }
-  .meter-bar { height: 18px; background: var(--color-cream); border: 1px solid var(--color-mist); position: relative; overflow: hidden; }
-  .meter-fill { height: 100%; width: 0%; background: var(--color-accent); transition: width var(--duration-base) var(--ease-out), background var(--duration-base) linear; }
-  .meter-zones { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 0.68rem; color: var(--color-ash); margin-top: 6px; }
+  .ctl .val b { color: var(--accent); }
+  .meter-bar { height: 18px; background: var(--bg); border: 1px solid var(--hairline); position: relative; overflow: hidden; }
+  .meter-fill { height: 100%; width: 0%; background: var(--accent); transition: width var(--duration-base) var(--ease-out), background var(--duration-base) linear; }
+  .meter-zones { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-muted); margin-top: 6px; }
   .readout { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing-md); margin-top: var(--spacing-lg); }
   @media (max-width: 600px) { .readout { grid-template-columns: 1fr; } .ctl input[type=range] { width: 100%; } }
-  .readout .r { border-top: 1px solid var(--color-mist); padding-top: 10px; }
-  .readout .r .rk { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-ash); }
+  .readout .r { border-top: 1px solid var(--hairline); padding-top: 10px; }
+  .readout .r .rk { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-muted); }
   .readout .r .rv { font-family: var(--font-mono); font-size: 1.5rem; margin-top: 4px; }
-  .readout .r .rv.warn { color: var(--color-accent); }
+  .readout .r .rv.warn { color: var(--accent); }
   #verdict { margin-top: var(--spacing-md); font-size: 0.95rem; }
-  #verdict .ok { color: var(--color-charcoal); }
-  #verdict .over { color: var(--color-accent); font-weight: 500; }
+  #verdict .ok { color: var(--ink-secondary); }
+  #verdict .over { color: var(--accent); font-weight: 500; }
 
   /* ---- Build sequence -------------------------------------- */
   .steps { margin-top: var(--spacing-md); display: grid; gap: 2px; }
-  .step { display: grid; grid-template-columns: 56px 1fr; gap: var(--spacing-md); padding: var(--spacing-sm) 0; border-bottom: 1px solid var(--color-mist); align-items: baseline; }
-  .step .sn { font-family: var(--font-mono); font-size: 1rem; color: var(--color-ash); }
-  .step.zero .sn { color: var(--color-accent); }
+  .step { display: grid; grid-template-columns: 56px 1fr; gap: var(--spacing-md); padding: var(--spacing-sm) 0; border-bottom: 1px solid var(--hairline); align-items: baseline; }
+  .step .sn { font-family: var(--font-mono); font-size: 1rem; color: var(--ink-muted); }
+  .step.zero .sn { color: var(--accent); }
   .step .sb strong { font-weight: 600; }
-  .step .sb span { color: var(--color-charcoal); font-size: 0.92rem; }
+  .step .sb span { color: var(--ink-secondary); font-size: 0.92rem; }
 
   /* ---- Non-goals ------------------------------------------- */
   .nogoals { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--spacing-sm); margin-top: var(--spacing-md); }
   @media (max-width: 700px) { .nogoals { grid-template-columns: 1fr; } }
-  .ng { padding: var(--spacing-sm) var(--spacing-md); border: 1px solid var(--color-mist); background: var(--color-paper); font-size: 0.92rem; }
-  .ng .x { color: var(--color-accent); font-family: var(--font-mono); margin-right: 8px; }
+  .ng { padding: var(--spacing-sm) var(--spacing-md); border: 1px solid var(--hairline); background: var(--panel-deep); font-size: 0.92rem; }
+  .ng .x { color: var(--accent); font-family: var(--font-mono); margin-right: 8px; }
 
   /* ---- Footer ---------------------------------------------- */
-  footer { padding: var(--spacing-2xl) 0 var(--spacing-xl); border-top: 1px solid var(--color-mist); color: var(--color-ash); font-size: 0.85rem; }
+  footer { padding: var(--spacing-2xl) 0 var(--spacing-xl); border-top: 1px solid var(--hairline); color: var(--ink-muted); font-size: 0.85rem; }
   footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--spacing-md); }
-  footer a { color: var(--color-charcoal); }
+  footer a { color: var(--ink-secondary); }
 
   /* Section eyebrow */
-  .eyebrow { color: var(--color-accent); margin-bottom: var(--spacing-sm); }
+  .eyebrow { color: var(--accent); margin-bottom: var(--spacing-sm); }
 
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
@@ -461,9 +468,10 @@
           <strong>UI &mdash; Vite + React + TS</strong>
         </div>
         <div class="ldesc">
-          Single-page slicer. Impeccable system on all <strong>chrome</strong> (header, controls,
-          trim, filmstrip, export flow, recents). Built to static assets, served by FastAPI &mdash;
-          no Next.js, one runtime process.
+          Single-page slicer. The <strong>Dark Instrument</strong> system (§7, <code>DESIGN.md</code> /
+          <code>theme.css</code>) across the whole UI &mdash; header, controls, trim, filmstrip, export
+          flow, recents &mdash; on Void Black with Panel-Deep panels and one Electric Blue accent. Built
+          to static assets, served by FastAPI &mdash; no Next.js, one runtime process.
           <span class="edge">edge &middot; <b>UI &rarr; API</b> over <code>fetch</code> to the §9 endpoint set · source: spec §4, §9</span>
         </div>
       </div>
@@ -473,13 +481,14 @@
       <div class="layer stage">
         <div class="lname">
           <span class="tier">L1b · media stage</span>
-          <strong>Dark Preview Surface</strong>
+          <strong>The Grading Bench</strong>
         </div>
         <div class="ldesc">
-          The video preview, filmstrip, and lightbox sit on a neutral-dark surface
-          (<span class="mono">oklch(20% 0 0)</span>) so extracted frames grade true &mdash; the
-          pro-tool standard. Still &ldquo;the Impeccable design,&rdquo; using its dark-surface tokens
-          where frame fidelity demands it.
+          The whole app is the dark stage, so frames grade true against neutral darkness (the
+          pro-tool standard &mdash; Premiere/DaVinci). The video preview, filmstrip, and lightbox sit on
+          the <em class="voice">deepest</em> surface &mdash; Void Black (<span class="mono">oklch(8% 0 0)</span>)
+          against the surrounding Panel-Deep panels (<span class="mono">oklch(15% 0 0)</span>) &mdash; so they
+          read as the grading bench. A tone step within one dark system, not a scoped exception.
           <span class="edge">edge &middot; <b>render-only</b> · consumes frame URLs from <code>GET /data/...</code> · source: spec §7</span>
         </div>
       </div>
@@ -629,7 +638,7 @@
       <div class="zones">
         <div class="zone locked">
           <h4 class="subtitle">manifest.json &middot; <span class="accent">locked_zones</span></h4>
-          <p style="font-size: 0.88rem; color: var(--color-charcoal);">
+          <p style="font-size: 0.88rem; color: var(--ink-secondary);">
             The integrity of the package. A downstream model must <strong>not</strong> touch these
             &mdash; do not regenerate the images.
           </p>
@@ -642,7 +651,7 @@
         </div>
         <div class="zone safe">
           <h4 class="subtitle">manifest.json &middot; <span class="accent">safe_zones</span></h4>
-          <p style="font-size: 0.88rem; color: var(--color-charcoal);">
+          <p style="font-size: 0.88rem; color: var(--ink-secondary);">
             The customization surface. A model is free to adapt these to its host repo without
             breaking the contract.
           </p>
@@ -689,7 +698,7 @@
           <li>Erase = <code>cv2.inpaint(INPAINT_TELEA)</code> per frame: smears, no feather, no temporal coherence.</li>
           <li>Hardcoded <code>if (end - start) &gt; 10.0</code> duration wall.</li>
           <li>4-format frame sprawl checked everywhere; gold-standard multi-doc package ceremony.</li>
-          <li>Dark Void-Black / Electric-Blue brand; Next.js route tree.</li>
+          <li>Studio wrapped in a Next.js route tree (dashboard, <code>slicer/[jobId]</code>, animation-guide).</li>
         </ul>
       </div>
       <div class="col target">
@@ -701,7 +710,7 @@
           <li>Two-tier erase: LaMa/IOPaint premium + enhanced OpenCV <code>INPAINT_NS</code> fallback, both with temporal coherence.</li>
           <li><code>MAX_SLICE_SECONDS=60</code> constant + frame-budget meter as the real governor.</li>
           <li>JPEG preview &rarr; WebP package, one format per stage; lean §8 contract.</li>
-          <li>Impeccable light editorial chrome + neutral-dark media stage; single-page Vite/React.</li>
+          <li>The Dark Instrument system (<code>DESIGN.md</code> / <code>theme.css</code>) across the whole UI; single-page Vite/React. The source's dark palette is <em class="voice">kept</em>; only the studio + route tree are cut.</li>
         </ul>
       </div>
     </div>
@@ -753,8 +762,8 @@
       <div class="step"><span class="sn">2</span><div class="sb"><strong>Slicing ops.</strong> <span>Crop (+ watermark enforcer), WebP, rename.</span></div></div>
       <div class="step"><span class="sn">3</span><div class="sb"><strong>Premium erase.</strong> <span>Two-tier engine + selection + temporal coherence.</span></div></div>
       <div class="step"><span class="sn">4</span><div class="sb"><strong>Packager.</strong> <span>Build contract package, portable paths, zip, run verify.mjs, expose download.</span></div></div>
-      <div class="step"><span class="sn">5</span><div class="sb"><strong>Design port.</strong> <span>Copy Impeccable skill + tokens; author PRODUCT.md / DESIGN.md fresh (not cherry-picked).</span></div></div>
-      <div class="step"><span class="sn">6</span><div class="sb"><strong>Frontend.</strong> <span>Vite/React Impeccable chrome + dark media stage; wire all endpoints; lightbox.</span></div></div>
+      <div class="step"><span class="sn">5</span><div class="sb"><strong>Design port.</strong> <span>Copy the Impeccable <strong>skill</strong> (audit tooling); tokens are <code>theme.css</code> (the Dark Instrument, §7), not Impeccable&rsquo;s light tokens. Author PRODUCT.md / DESIGN.md fresh.</span></div></div>
+      <div class="step"><span class="sn">6</span><div class="sb"><strong>Frontend.</strong> <span>Vite/React Dark-Instrument UI (§7, <code>DESIGN.md</code> / <code>theme.css</code>); wire all endpoints; lightbox.</span></div></div>
       <div class="step"><span class="sn">7</span><div class="sb"><strong>Share.</strong> <span>local / Tailscale / LAN URL surfacing; launcher.</span></div></div>
       <div class="step"><span class="sn">8</span><div class="sb"><strong>Polish &amp; gate.</strong> <span>/impeccable audit, npx impeccable detect, end-to-end: real video &rarr; package &rarr; opens &amp; animates &rarr; verify.mjs green.</span></div></div>
       <div class="step"><span class="sn">9</span><div class="sb"><strong>OSS readiness.</strong> <span>README (token-burn + SEO/CWV pitch), permissive LICENSE, examples, sample package, CI running verify.mjs.</span></div></div>
@@ -801,7 +810,7 @@
         <div class="ctl">
           <label for="dur">Duration</label>
           <input type="range" id="dur" min="1" max="60" value="10" step="1">
-          <span class="val"><b id="durV">10</b> s &middot; <span class="mono" style="color: var(--color-ash);">max 60</span></span>
+          <span class="val"><b id="durV">10</b> s &middot; <span class="mono" style="color: var(--ink-muted);">max 60</span></span>
         </div>
         <div class="ctl">
           <label for="fps">Effective fps</label>
@@ -828,7 +837,7 @@
       <p class="micro" style="margin-top: var(--spacing-md);">
         Why not just allow 60s at any fps: 60s &times; 12fps &asymp; 720 frames &asymp; ~29 MB destroys the
         lazy-loadable/LCP-safe promise. 60s &times; 2fps &asymp; 120 frames is fine. The meter enforces the
-        contract regardless of the duration chosen. <span class="mono" style="color: var(--color-ash);">(illustrative ~40 KB/frame model)</span>
+        contract regardless of the duration chosen. <span class="mono" style="color: var(--ink-muted);">(illustrative ~40 KB/frame model)</span>
       </p>
     </div>
   </section>
@@ -874,13 +883,13 @@
         <tr><td><code>resize_factor = 1.0 # Optimize if needed</code>, commented hints, dead vars</td><td><span class="ref">slicing.py:211</span></td><td>Drop dead / aspirational code and comments.</td></tr>
         <tr><td>Old &ldquo;experience&rdquo; meta fields (<code>trigger</code>, <code>effect</code>, <code>easing</code>, <code>prompt</code>, GSAP)</td><td><span class="ref">slicing.py:374-384</span></td><td>manifest.json is a fresh schema (§8). Don&rsquo;t carry GSAP-studio metadata.</td></tr>
         <tr><td>Gold-standard multi-doc package ceremony (INSTRUCTIONS.llm.md, VIDEO_PROMPT.md, USE_CASES.md, VARIANTS.md, design-tokens.css, animation.tsx)</td><td><span class="ref">templates/packages/.../</span></td><td>Our package is the lean §8 contract. Take verify.mjs + fingerprint, not the doc pile.</td></tr>
-        <tr><td>Source PRODUCT.md / DESIGN.md (dark Void-Black / Electric-Blue brand)</td><td><span class="ref">docs/PRODUCT.md, docs/DESIGN.md</span></td><td>Author fresh (§7). Copying would contradict the Impeccable design.</td></tr>
+        <tr><td>Source PRODUCT.md / DESIGN.md (dark Void-Black / Electric-Blue brand)</td><td><span class="ref">docs/PRODUCT.md, docs/DESIGN.md</span></td><td>Author <strong>fresh</strong> (§7). The dark <em class="voice">tokens</em> carry over (theme.css is a verbatim port of source <code>globals.css</code>), but the source docs describe a <strong>different product</strong> (the studio) &mdash; re-author the framing for the lean slicer, don&rsquo;t copy the source narrative.</td></tr>
         <tr><td>MLX/Gemma stack, benchmarks, demos/ (<code>mlx_*.py</code>, <code>bench_*</code>, <code>demos/</code>)</td><td><span class="ref">repo-wide</span></td><td>Not ported at all (§2).</td></tr>
         <tr><td>Next.js scaffolding &amp; studio routes (<code>slicer/[jobId]</code>, <code>animation-guide</code>, dashboard)</td><td><span class="ref">frontend/src/app/...</span></td><td>Rebuild single-page Vite/React; port slicer interactions, not the route tree or studio tabs.</td></tr>
         <tr><td>Hardcoded <code>if (end - start) &gt; 10.0</code> wall</td><td><span class="ref">slicing.py:14</span></td><td>Replaced by <code>MAX_SLICE_SECONDS</code> constant + frame-budget check (§5.1).</td></tr>
       </tbody>
     </table>
-    <p class="lede" style="font-size: 0.9rem; margin-top: var(--spacing-md); color: var(--color-charcoal);">
+    <p class="lede" style="font-size: 0.9rem; margin-top: var(--spacing-md); color: var(--ink-secondary);">
       <strong>Gate:</strong> the implementation workflow includes a regression-context reviewer that greps
       the new repo for <code>DEBUG</code>, <code>Gemma</code>/<code>mlx</code>/<code>AIClient</code>,
       <code>INPAINT_TELEA</code> (outside the fallback), <code>baseUrl</code>,
@@ -894,7 +903,7 @@
 <footer>
   <div class="wrap">
     <span>Spec seed for <strong>seo-video-slicer</strong> &middot; source of truth: <a href="../../specs/seo-video-slicer-spec.md">docs/specs/seo-video-slicer-spec.md</a></span>
-    <span>Impeccable system &middot; light editorial chrome &middot; one decisive magenta</span>
+    <span>The Dark Instrument &middot; Void-Black canvas &middot; one decisive Electric Blue</span>
   </div>
 </footer>
 
@@ -943,14 +952,14 @@
       weightEl.textContent = mb.toFixed(1) + ' MB';
       weightEl.className = 'rv' + (mb > SOFT_CAP_MB ? ' warn' : '');
       laneEl.textContent = info.name;
-      // One Voice: warn and over both read in the single accent; the copy + weight
+      // One Accent Rule: warn and over both read in the single accent; the copy + weight
       // carry the difference. Only `over` is the hard fail.
-      laneEl.style.color = (info.over || info.warn) ? 'var(--color-accent)' : 'var(--color-charcoal)';
+      laneEl.style.color = (info.over || info.warn) ? 'var(--accent)' : 'var(--ink-secondary)';
 
       // meter fill: position against the 200-frame ceiling
       var pct = Math.min(100, (frames / HARD_FRAMES) * 100);
       fill.style.width = pct + '%';
-      fill.style.background = info.over ? 'var(--color-accent)' : 'var(--color-ink)';
+      fill.style.background = info.over ? 'var(--accent)' : 'var(--ink-secondary)';
 
       if (info.over) {
         var sug = suggestFps(s);

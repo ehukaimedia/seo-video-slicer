@@ -4,10 +4,17 @@
 
 **Turn a short video into a drop-in WebP animation package — so your AI assistant ships premier scroll motion without burning tokens drawing it from scratch.**
 
+[![CI](https://github.com/ehukaimedia/seo-video-slicer/actions/workflows/ci.yml/badge.svg)](https://github.com/ehukaimedia/seo-video-slicer/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Status](https://img.shields.io/badge/status-alpha-orange)
 ![Backend](https://img.shields.io/badge/backend-FastAPI%20%2B%20ffmpeg%20%2B%20OpenCV-0b7)
 ![Frontend](https://img.shields.io/badge/frontend-Vite%20%2B%20React%20%2B%20TS-09f)
+
+<br/>
+
+![A 10-second clip sliced into a drop-in WebP scroll animation](docs/assets/demo.webp)
+
+<sub>This looping preview <em>is</em> an animated WebP — exactly the kind of asset the slicer ships. ~1&nbsp;MB, lazy-loadable, CLS-free.</sub>
 
 </div>
 
@@ -41,6 +48,8 @@ Every export is a **self‑contained folder that opens and animates with no serv
 
 Drop it into `public/`, embed the iframe (or adapt the player into a component), and you're done. `node verify.mjs` proves the package is intact and self‑contained.
 
+**See a real one:** [`example/sample-package/`](example/sample-package) is a committed, gate-passing export — open its `index.html` and scroll.
+
 ## Why it's good for SEO / Core Web Vitals
 
 WebP frame sequences are **LCP‑safe, lazy‑loadable, and CLS‑free** — a fraction of the weight of shipping video or a heavy JS animation library. A typical 10s hero clip lands around **40–60 frames / ~2 MB**. The package is engineered to *help* Core Web Vitals, not hurt them.
@@ -60,10 +69,13 @@ A dark, technical instrument: Void‑Black canvas, one Electric‑Blue accent, f
 ```bash
 git clone https://github.com/ehukaimedia/seo-video-slicer.git
 cd seo-video-slicer
-./start.command          # macOS: builds the UI, starts the server, prints the URLs
+
+./start.command          # macOS  (double-click works too)
+bash start.sh            # Linux / macOS
+make setup && make run   # any platform with make
 ```
 
-Then open **http://localhost:8000**. The launcher also surfaces your **LAN** and **Tailscale** URLs so you can drive it from another device.
+Each launcher sets up the venv, builds the UI, and starts the server. Then open **http://localhost:8000**. It also prints your **LAN** and **Tailscale** URLs so you can drive it from another device.
 
 <details>
 <summary>Manual launch (Linux / Windows)</summary>
@@ -115,10 +127,19 @@ PRODUCT.md          who it's for and why
 
 Alpha — the full pipeline works end‑to‑end (verified on real footage). On the way to a polished 1.0:
 
-- [ ] CI running `verify.mjs` + a `pytest` backend suite
-- [ ] A curated example package + a demo GIF
-- [ ] Refresh the spec/architecture‑playground design sections to the current dark system
+- [x] CI (GitHub Actions) running the `pytest` backend suite, the kernel `verify.mjs` test, and the frontend build
+- [x] A curated example package + an animated demo
+- [x] Cross‑platform launch (`start.sh`, `Makefile`)
+- [x] Spec + architecture playground on the current dark design system
 - [ ] `npx`/`uvx` zero‑clone story and a hosted live demo
+
+### Development
+
+```bash
+make setup     # venv + deps + npm install
+make test      # backend pytest + kernel verify
+make build     # build the UI
+```
 
 Issues and PRs welcome.
 
