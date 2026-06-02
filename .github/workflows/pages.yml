@@ -1,0 +1,48 @@
+name: Deploy demo to GitHub Pages
+
+# A STATIC demo only — the landing page plus the real exported scroll-player from
+# example/sample-package/. No backend is hosted (the slicer is a local tool; see
+# SECURITY.md). Deploys on changes to the site/example/demo assets.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "example/sample-package/**"
+      - "docs/assets/demo.webp"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble the static site
+        run: |
+          rm -rf _site
+          mkdir -p _site/player
+          cp site/index.html _site/index.html
+          cp docs/assets/demo.webp _site/demo.webp
+          cp -r example/sample-package/. _site/player/
+          echo "" > _site/.nojekyll
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

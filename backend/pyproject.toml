@@ -1,0 +1,46 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "seo-video-slicer"
+version = "0.1.1"
+description = "Slice a short video into a drop-in WebP scroll-animation package — premier motion for any repo, no token burn."
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "ehukaimedia", email = "ehukaimedia@gmail.com" }]
+keywords = ["video", "webp", "animation", "ffmpeg", "opencv", "scroll-animation", "core-web-vitals", "seo"]
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Multimedia :: Video",
+  "Environment :: Console",
+]
+dependencies = [
+  "fastapi>=0.110,<1.0",
+  "uvicorn[standard]>=0.27,<1.0",
+  "python-multipart>=0.0.9",
+  "numpy>=1.24",
+  "opencv-python-headless>=4.8",
+  "pillow>=10.0",
+]
+
+# ffmpeg (media) and node (the frozen package kernel) are SYSTEM prerequisites —
+# they are shelled out to, not importable, so they cannot be pip dependencies.
+
+[project.urls]
+Homepage = "https://github.com/ehukaimedia/seo-video-slicer"
+Repository = "https://github.com/ehukaimedia/seo-video-slicer"
+Issues = "https://github.com/ehukaimedia/seo-video-slicer/issues"
+
+[project.scripts]
+seo-video-slicer = "app.cli:main"
+
+[tool.hatch.build]
+# Force-include the bundled UI + kernel (created by scripts/build-wheel.sh, and
+# git-ignored) so the wheel is self-contained: `uvx --from <wheel> seo-video-slicer`
+# runs with no clone.
+artifacts = ["app/_web/**", "app/_kernel/**"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
