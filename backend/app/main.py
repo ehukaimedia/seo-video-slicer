@@ -138,6 +138,15 @@ def _slice_frame_entries(job_id: str, slice_id: str, slice_dir: Path) -> list[di
     return entries
 
 
+def _path_is_within(path: Path, root: Path) -> bool:
+    """True when a resolved filesystem path remains under a resolved root."""
+    try:
+        path.relative_to(root)
+        return True
+    except ValueError:
+        return False
+
+
 # ===========================================================================
 # 1. POST /api/upload
 # ===========================================================================
@@ -566,7 +575,7 @@ async def serve_data(subpath: str) -> FileResponse:
     validate_data_subpath(subpath)
     target = (DATA_DIR / subpath).resolve()
     # Defense in depth: the resolved path must stay within DATA_DIR.
-    if not str(target).startswith(str(DATA_DIR)):
+    if not _path_is_within(target, DATA_DIR):
         raise ApiError(400, "invalid path", "path escapes data root")
     if not target.is_file():
         raise ApiError(404, "not found", subpath)
@@ -602,7 +611,7 @@ def _mount_frontend() -> None:
         if full_path.startswith(("api/", "data/", "assets/")):
             raise ApiError(404, "not found", full_path)
         candidate = (FRONTEND_DIST / full_path).resolve()
-        if str(candidate).startswith(str(FRONTEND_DIST)) and candidate.is_file():
+        if _path_is_within(candidate, FRONTEND_DIST) and candidate.is_file():
             return FileResponse(str(candidate))
         return FileResponse(str(index_html))
 
