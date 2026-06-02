@@ -7,7 +7,7 @@
 #   make setup   # create venv, pip install backend deps, npm install frontend
 #   make build   # build the frontend (npm run build -> frontend/dist)
 #   make run      # start uvicorn on $(SVS_PORT) (default 8000), bound to 0.0.0.0
-#   make test    # pytest backend + node kernel verify against the golden package
+#   make test    # pytest backend + node kernel verify against the sample package
 #   make clean   # remove venv, frontend build/node_modules, and pycache
 #
 # Override the port:  make run SVS_PORT=9000
@@ -34,11 +34,11 @@ build:
 run:
 	cd backend && ../$(PY) -m uvicorn app.main:app --host 0.0.0.0 --port $(SVS_PORT)
 
-# Backend pytest + the frozen package-kernel verify against the golden fixture.
+# Backend pytest + the frozen package-kernel verify against the sample package.
 # pytest exits 5 when it collects no tests — tolerate only that, not real failures.
 test:
 	$(PY) -m pytest backend || [ $$? -eq 5 ]
-	node package-contract/verify.mjs examples/golden-package
+	node package-contract/verify.mjs example/sample-package
 
 # Remove generated artifacts. Leaves source untouched.
 clean:
