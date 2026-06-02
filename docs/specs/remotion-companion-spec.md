@@ -91,7 +91,7 @@ seo-video-slicer slice <path> \
 - `--out-dir` — directory to write the package into (see §7.6 path stance).
 - `--slug` — package id; sanitized via `packager.sanitize_slug` (kebab-case, 1–64 chars). Defaults to the out-dir basename.
 - `--json` — emit one machine-readable JSON object to stdout (identical to the MCP return shape, §10.2). Without it, a human summary (package path + per-gate PASS/FAIL).
-- `--no-verify` — build without running the gate (fast local iteration). **Off by default**; CI and MCP always verify. Under `--json`, `verify` is `{"skipped": true}` and the exit code is `0` on a successful build.
+- `--no-verify` — skip gate *enforcement*: the package is built and `verify.mjs` may still run, but its result is not enforced on the exit code. Output shows `verify: {"skipped": true}` and exit `0` on a clean build. **Off by default**; CI and MCP always enforce the gate. (Implementation note: enforcement is suppressed at the CLI boundary; `build_and_verify` itself has no skip-gate flag, so this is not a true fast-path — `verify.mjs` is sub-second anyway.)
 - `slice --help` ships a **curated** usage block (the signature above + one example per ingest path and mode), asserted in CLI tests — not raw argparse noise.
 
 ### 5.2 Reuse chain (no JobStore, temp dirs)
@@ -167,7 +167,7 @@ The frozen recipe `fingerprint(frameBasenames, gsapUrlOrEmpty, templateId)` (`CO
 
 Today `build_and_verify(slice_dir, pkg_dir, slug, duration_s, fps_effective, resolution, origin, quality=WEBP_QUALITY)` returns `{verify, frame_count, weight_mb, lane, zip_path}` (no `package_dir`, no `loop_webp`, no `mode`). Changes:
 
-- **Signature:** add **trailing** params `mode: str = "scroll"` and `loop_webp_path: Path | None = None`. Trailing defaults keep the sole existing caller (`backend/app/main.py` package route) working unchanged.
+- **Signature:** add a single **trailing** param `mode: str = "scroll"` (the trailing default keeps the sole existing caller, `backend/app/main.py`, working unchanged). For loop mode `build_and_verify` **internally** bakes `loop.webp` — it calls `loop_export` after the >200 fail-fast (raising `ApiError(422)` if over budget, *before* any encode) and passes `--loop-webp` to the kernel. Callers pass only `mode="loop"`; there is **no** `loop_webp_path` parameter (the bake is owned internally). An unknown `mode` raises `ApiError(422)`.
 - **Build command:** when `mode="loop"`, append `--mode loop` and `--loop-webp <path>` to the `node build_package.mjs` invocation (§6.4b).
 - **Return dict:** add `package_dir` (= `str(pkg_dir)`) and `loop_webp` (= the package-relative `loop.webp` path string, or `None` for scroll). Keep `zip_path` for the HTTP caller.
 - **Ownership of bytes vs hash:** `backend/app/loop_export.py` (§6.7) **produces the `loop.webp` bytes**; the **Node loop-builder owns** copying it in, computing `webp_sha256`, and writing the `loop` block + manifest. One owner for the hash + manifest avoids a double-compute/drift surface. `build_and_verify` calls `loop_export` first (only for loop mode, and only after the >200 fail-fast check, §6.8), then passes the produced path via `--loop-webp`.
@@ -381,7 +381,7 @@ python -m app.cli slice ./out --fps 12 --mode loop --out-dir ./pkg
 |---|---|---|
 | **Loop kernel** (Phase 0) | `package-contract/index.template.loop.html`, `package-contract/CONTRACT-loop.md`, the `MODE_CONFIG`/`SCHEMA_CONFIG` dispatch + loop branch (incl. loop README generator, G8/G9, adapted G4) in `package-contract/build_package.mjs` + `verify.mjs`, **`backend/app/loop_export.py`** (the loop.webp primitive, needed to build & gate the golden loop package), loop + golden cases in `package-contract/test-kernel.mjs` | the scroll config values; the `fingerprint()` body |
 | **Headless CLI** (Phase 1) | `backend/app/slice_cli.py`, the `slice` subcommand + shared `_resolve_bundled_paths()` in `backend/app/cli.py`, CLI tests | the kernel; the MCP server |
-| **Packager integration** (Phase 1) | the `mode`/`loop_webp_path` params + return-dict additions in `backend/app/packager.py` (consumes the Phase-0 `loop_export.py`), packager tests | the loop primitive (Phase 0 owns it); the player template; the CLI front-door |
+| **Packager integration** (Phase 1) | the `mode` param (internally bakes `loop.webp` via `loop_export`) + return-dict additions (`package_dir`, `loop_webp`) in `backend/app/packager.py`, packager tests | the loop primitive (Phase 0 owns it); the player template; the CLI front-door |
 | **MCP server** | `backend/app/mcp/` (`__init__`, `server`, `__main__`), `[mcp]` extra in `pyproject.toml`, the CC skill wrapper, MCP smoke test | `slicing`/`packager` internals (imports only) |
 | **Remotion recipe** | `examples/remotion/`, `slicing.convert_frames_to_webp`, docs recipe | the kernel; the MCP server |
 

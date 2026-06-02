@@ -21,11 +21,22 @@ from pathlib import Path
 from shutil import which
 
 
-def main() -> None:
+def _resolve_bundled_paths() -> None:
+    """Point the backend at the bundled assets when they exist (wheel install).
+
+    When installed from the wheel, the built UI and the frozen package kernel ship
+    *inside* the package (``app/_web`` and ``app/_kernel``); set the ``SVS_*`` env
+    vars so ``config`` resolves them, and keep runtime data out of site-packages.
+    Running from a source checkout (no bundled dirs) leaves the env untouched so
+    ``config`` falls back to the repo defaults.
+
+    Pure ``os``/``pathlib`` (no ``config`` import) and idempotent
+    (``setdefault``), so BOTH :func:`main` and the ``slice`` subcommand (CLI lane)
+    can call it **before** importing ``config``/``packager`` and get the bundled
+    kernel resolved (spec §5.2).
+    """
     pkg_dir = Path(__file__).resolve().parent
 
-    # Point the backend at the bundled assets when they exist (wheel install);
-    # otherwise fall back to the repo defaults (running from a source checkout).
     web = pkg_dir / "_web"
     if web.is_dir():
         os.environ.setdefault("SVS_FRONTEND_DIST", str(web))
@@ -35,6 +46,21 @@ def main() -> None:
 
     # Installed tool: keep jobs/packages out of site-packages.
     os.environ.setdefault("SVS_DATA_DIR", str(Path.home() / ".seo-video-slicer" / "data"))
+
+
+def main() -> None:
+    _resolve_bundled_paths()
+
+    # Headless `slice` subcommand (spec §5): dispatch BEFORE the uvicorn-launch path
+    # and its ffmpeg fatal check — the CLI does its own ffmpeg/node error mapping
+    # (exit 2), and a missing ffmpeg must not exit 1 here. _resolve_bundled_paths()
+    # already ran above so a wheel install resolves the bundled kernel (§5.2); import
+    # slice_cli lazily, inside the branch, AFTER the env is set.
+    argv = sys.argv[1:]
+    if argv and argv[0] == "slice":
+        from . import slice_cli
+
+        raise SystemExit(slice_cli.main(argv[1:]))
 
     port = int(os.environ.get("SVS_PORT", "8000"))
     os.environ["SVS_PORT"] = str(port)

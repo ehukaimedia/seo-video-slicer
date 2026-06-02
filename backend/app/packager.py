@@ -18,13 +18,15 @@ It re-derives nothing the kernel owns (fingerprint, manifest, player markers).
 from __future__ import annotations
 
 import logging
+import os
 import re
 import subprocess
+import tempfile
 import zipfile
 from pathlib import Path
 
-from . import budget
-from .config import BUILD_PACKAGE_MJS, VERIFY_MJS, WEBP_QUALITY
+from . import budget, loop_export
+from .config import BUILD_PACKAGE_MJS, FRAME_COUNT_HARD_MAX, VERIFY_MJS, WEBP_QUALITY
 from .errors import ApiError
 
 log = logging.getLogger("svs.packager")
@@ -60,14 +62,36 @@ def build_and_verify(
     resolution: str,
     origin: str,
     quality: int = WEBP_QUALITY,
+    mode: str = "scroll",
 ) -> dict:
     """Build the package, gate it, and assemble the §7.3 result dict.
 
+    ``mode`` selects the package family (spec §6.4a / §6.4b):
+
+    * ``"scroll"`` (default): byte-for-byte unchanged from today — the existing
+      ``build_package.mjs`` invocation with no loop args.
+    * ``"loop"``: FIRST fail-fast if the slice has more than
+      :data:`config.FRAME_COUNT_HARD_MAX` frames (the same hard cap G7 enforces,
+      raised here BEFORE the expensive encode); then bake ``loop.webp`` via
+      :func:`loop_export.export_loop_webp` into a tmpfile and hand it to the Node
+      builder with ``--mode loop --loop-webp <tmpfile>`` so the kernel copies it
+      in, hashes it (``webp_sha256``), and writes the ``loop`` manifest block.
+
+    Design note (spec_deviation): ``build_and_verify`` owns the ``loop_export``
+    call internally — callers just pass ``mode="loop"`` — superseding §6.4a's
+    ``loop_webp_path`` param idea. The Node loop-builder still owns the hash + the
+    ``loop`` block; this module owns only the bytes + the tmpfile lifecycle.
+
     Returns a dict with ``package_id`` left to the caller; here we return
-    ``verify`` (``{pass, gates}``), ``frame_count``, ``weight_mb``, ``lane``, and
-    ``zip_path`` (a Path when the gate passed, else ``None``). Raises 500 if the
-    kernel crashes for a non-gate reason (missing template, node not found, etc.).
+    ``verify`` (``{pass, gates}``), ``frame_count``, ``weight_mb``, ``lane``,
+    ``zip_path`` (a Path when the gate passed, else ``None``), ``package_dir``
+    (``str(pkg_dir)``), and ``loop_webp`` (the package-relative ``"loop.webp"``
+    for loop mode, else ``None``). Raises 500 if the kernel crashes for a non-gate
+    reason (missing template, node not found, etc.); raises 422 for a loop slice
+    over the hard frame cap.
     """
+    if mode not in ("scroll", "loop"):
+        raise ApiError(422, "invalid mode", f"mode must be 'scroll' or 'loop' (got {mode!r})")
     if not _node_available():
         raise ApiError(500, "node not found", "Node.js is required to build the package")
     if not BUILD_PACKAGE_MJS.exists():
@@ -77,28 +101,66 @@ def build_and_verify(
 
     pkg_dir.mkdir(parents=True, exist_ok=True)
 
-    # (a) BUILD — reuse build_package.mjs verbatim; do not reimplement.
-    build_cmd = [
-        "node",
-        str(BUILD_PACKAGE_MJS),
-        "--frames",
-        str(slice_dir),
-        "--out",
-        str(pkg_dir),
-        "--id",
-        slug,
-        "--duration",
-        str(duration_s),
-        "--fps",
-        str(fps_effective),
-        "--resolution",
-        resolution,
-        "--quality",
-        str(quality),
-        "--origin",
-        origin,
-    ]
-    build = subprocess.run(build_cmd, capture_output=True, text=True, check=False, timeout=300)
+    # (a0) LOOP FAIL-FAST — before any expensive encode/build (spec §6.8). The
+    # >200 hard cap mirrors verify.mjs G7; raise it here so a doomed loop never
+    # pays for an encode.
+    if mode == "loop":
+        slice_frames = sorted(slice_dir.glob("frame_*.webp"))
+        if len(slice_frames) > FRAME_COUNT_HARD_MAX:
+            raise ApiError(
+                422,
+                "frame count over budget",
+                f"{len(slice_frames)} frames exceeds the hard cap "
+                f"of {FRAME_COUNT_HARD_MAX} (G7)",
+            )
+
+    # The loop tmpfile lives OUTSIDE pkg_dir so a failed build never strands a
+    # stray loop.webp in the package tree. Allocate it up front so a single
+    # try/finally spans BOTH the encode and the build — if export_loop_webp
+    # raises (e.g. a <2-frame loop), the just-created tmpfile is still cleaned up.
+    loop_tmp: Path | None = None
+    if mode == "loop":
+        fd, tmp_name = tempfile.mkstemp(suffix=".webp", prefix="svs-loop-")
+        os.close(fd)
+        loop_tmp = Path(tmp_name)
+
+    try:
+        if mode == "loop":
+            # (a0b) BAKE loop.webp into the tmpfile (loop_export owns the bytes).
+            loop_export.export_loop_webp(slice_dir, loop_tmp, fps_effective, quality)
+
+        # (a) BUILD — reuse build_package.mjs verbatim; do not reimplement.
+        build_cmd = [
+            "node",
+            str(BUILD_PACKAGE_MJS),
+            "--frames",
+            str(slice_dir),
+            "--out",
+            str(pkg_dir),
+            "--id",
+            slug,
+            "--duration",
+            str(duration_s),
+            "--fps",
+            str(fps_effective),
+            "--resolution",
+            resolution,
+            "--quality",
+            str(quality),
+            "--origin",
+            origin,
+        ]
+        if mode == "loop":
+            # Scroll appends NO extra args (byte-identical output); only loop does.
+            build_cmd += ["--mode", "loop", "--loop-webp", str(loop_tmp)]
+        build = subprocess.run(
+            build_cmd, capture_output=True, text=True, check=False, timeout=300
+        )
+    finally:
+        # The kernel has copied loop.webp into the package by now (or the encode
+        # raised); the tmpfile is no longer needed regardless of the outcome.
+        if loop_tmp is not None and loop_tmp.exists():
+            loop_tmp.unlink()
     if build.returncode != 0:
         log.error("build_package.mjs failed: %s", (build.stderr or "")[-500:])
         raise ApiError(
@@ -148,6 +210,8 @@ def build_and_verify(
         "weight_mb": weight_mb,
         "lane": lane,
         "zip_path": zip_path,
+        "package_dir": str(pkg_dir),
+        "loop_webp": "loop.webp" if mode == "loop" else None,
     }
 
 

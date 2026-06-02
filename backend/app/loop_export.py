@@ -91,6 +91,15 @@ def export_loop_webp(
     """
     duration_ms = _frame_duration_ms(fps)
     frames = _list_frames(frames_dir)
+    # A 1-frame "loop" cannot be a valid animated WebP: the §6.9 encoder spike
+    # showed an animated WebP needs >=2 ANMF-eligible frames (a single frame
+    # bakes a still image, not an ANIM container, and G8 has no animation to bind).
+    if len(frames) < 2:
+        raise ApiError(
+            422,
+            "too few frames for a loop",
+            f"a loop needs >=2 frames (got {len(frames)} in {frames_dir})",
+        )
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     if encoder == "pillow":

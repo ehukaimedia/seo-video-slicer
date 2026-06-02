@@ -563,7 +563,7 @@
       <tbody>
         <tr><td><strong>Loop kernel</strong> (P0)</td><td><code>index.template.loop.html</code>, <code>CONTRACT-loop.md</code>, the mode/schema dispatch + loop branch in <code>build_package.mjs</code>/<code>verify.mjs</code>, <code>backend/app/loop_export.py</code>, loop + golden cases in <code>test-kernel.mjs</code></td><td>scroll path logic; the <code>fingerprint()</code> body</td></tr>
         <tr><td><strong>Headless CLI</strong></td><td><code>backend/app/slice_cli.py</code>, the <code>slice</code> subcommand in <code>cli.py</code>, CLI tests</td><td>the kernel; the MCP server</td></tr>
-        <tr><td><strong>Packager integration</strong> (P1)</td><td>the <code>mode</code>/<code>loop_webp_path</code> params + return-dict additions in <code>packager.py</code> (consumes the P0 <code>loop_export.py</code>), packager tests</td><td>the loop primitive (P0 owns it); the player template; the CLI</td></tr>
+        <tr><td><strong>Packager integration</strong> (P1)</td><td>the <code>mode</code> param (internally bakes <code>loop.webp</code> via <code>loop_export</code>) + return-dict additions (<code>package_dir</code>, <code>loop_webp</code>) in <code>packager.py</code>, packager tests</td><td>the loop primitive (P0 owns it); the player template; the CLI</td></tr>
         <tr><td><strong>MCP server</strong></td><td><code>backend/app/mcp/</code>, <code>[mcp]</code> extra, the CC skill wrapper, MCP smoke test</td><td><code>slicing</code>/<code>packager</code> internals (imports only)</td></tr>
         <tr><td><strong>Remotion recipe</strong></td><td><code>examples/remotion/</code>, <code>convert_frames_to_webp</code> in <code>slicing.py</code>, docs recipe</td><td>the kernel; the MCP server</td></tr>
       </tbody>
