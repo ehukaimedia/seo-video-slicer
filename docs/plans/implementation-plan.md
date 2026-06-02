@@ -194,46 +194,45 @@
 
 ---
 
-## Phase 5 — Impeccable Design Port (skill + tokens + PRODUCT.md/DESIGN.md)
+## Phase 5 — Dark Instrument Design Lock (PRODUCT.md/DESIGN.md/theme.css)
 
-**Goal:** Make `/impeccable` work in-repo and establish the brand: copy the skill + tokens verbatim, author `PRODUCT.md` and `DESIGN.md` at repo root (Impeccable setup gates read root first). **Independent of P1–P4 — runs in parallel.**
+**Goal:** Establish the current product brand as a lean, dark technical instrument: `PRODUCT.md` defines the product/non-goals, `DESIGN.md` is the design-system narrative, and `frontend/src/styles/theme.css` is the 1:1 token implementation. **Independent of P1–P4 — runs in parallel.**
 
 **Targets:**
-- `.claude/skills/impeccable/` — already present (verify intact, Node-stdlib only).
-- `public/css/tokens.css` (and/or `frontend/src/styles/impeccable-tokens.css`, already present) — tokens **verbatim** from the reference; the authoritative token source.
-- `PRODUCT.md` (repo root) — authored **fresh** for seo-video-slicer: `register` field, our users (dev/designer with a short clip), product purpose (token-burn-free WebP animation package), brand voice, anti-references. **Do not** copy source/impeccable PRODUCT.md.
-- `DESIGN.md` (repo root) — authored by **porting** Impeccable: tokens verbatim + our framing, including the §7 **chrome-vs-dark-stage** decision and the **media-stage dark tokens** (`oklch(20% 0 0)`-ish stage so frames grade true). `impeccable/DESIGN.md` is the structural template, not copied content.
+- `PRODUCT.md` (repo root) — authored fresh for seo-video-slicer: developer/designer users, token-burn-free WebP package purpose, expert concise voice, and explicit non-goals.
+- `DESIGN.md` (repo root) — the current dark design system of record: Void Black canvas, Panel Deep surfaces, Hairline seams, Ink text tokens, one Electric Blue accent, system sans + ui-mono.
+- `frontend/src/styles/theme.css` — the authoritative implementation of those tokens. `DESIGN.md` and `theme.css` must stay aligned.
 
-**Tokens (authoritative, spec §7):** Editorial Magenta `oklch(60% 0.25 350)` (only vibrant color) / deep `oklch(52% 0.25 350)`; Warm Ash Cream `oklch(96% 0.005 350)` page; Crisp Paper White `oklch(98% 0 0)` cards; Paper Mist `oklch(92% 0 0)` hairlines; Deep Graphite `oklch(10% 0 0)` ink. Cormorant Garamond (display 300 italic) · Instrument Sans (body 1.6) · Space Grotesk (mono). `--ease-out: cubic-bezier(0.16,1,0.3,1)`; durations .15/.3/.6s; sharp CTAs (`border-radius:0`); flat-by-default.
+**Tokens (authoritative, spec §7):** Void Black `oklch(8% 0 0)` canvas; Panel Deep `oklch(15% 0 0)` panels; Hairline `oklch(22% 0 0)` seams; Ink Primary/Secondary/Muted `oklch(98%/75%/55% 0 0)`; Electric Blue `oklch(65% 0.20 250)` as the single accent; Success/Danger reserved for state. Typography is system sans + ui-mono only.
 
 **Cherry-pick anchors:**
-- Impeccable design system + skill ← `/AI-Applications/seo-video-slicer/docs/reference/` (impeccable-DESIGN.json, impeccable-DESIGN.reference.md) + the in-repo skill. Tokens already mirrored at `frontend/src/styles/impeccable-tokens.css`.
+- Dark token structure and app-stage rationale from the source project only as a pattern; no copied studio routes, model surfaces, or light editorial artifacts.
 
 **Regression to strip (§10.1):**
-- **Source `PRODUCT.md` / `DESIGN.md`** (dark Void-Black / Electric-Blue brand) → author fresh; copying contradicts the light editorial Impeccable design.
-- No dark Void-Black/Electric-Blue tokens; magenta is the only vibrant color (One Voice Rule).
+- No light-editorial design system as current truth: no warm paper surfaces, magenta accent, serif/webfont stack, or `docs/reference/impeccable-DESIGN.*` artifacts.
+- No studio/dashboard/model/chat concepts in product chrome. The app remains slicer + package.
 
 **TDD checkpoints (setup gates, not code tests):**
-- `node .claude/skills/impeccable/scripts/load-context.mjs` resolves root `PRODUCT.md` + `DESIGN.md`, both non-placeholder (>200 chars, no `[TODO]`).
-- `PRODUCT.md` has a `register` field.
-- `tokens.css` values match spec §7 verbatim.
+- `PRODUCT.md` + `DESIGN.md` are non-placeholder (>200 chars, no `[TODO]`).
+- `DESIGN.md` and `frontend/src/styles/theme.css` agree on the named tokens.
+- A drift grep finds no active light-editorial tokens outside explicit supersession notes.
 
-**Acceptance:** `IMPECCABLE_PREFLIGHT: context=pass product=pass` achievable; tokens drive the UI; design framing documents the chrome/dark-stage split.
+**Acceptance:** tokens drive the UI; design framing documents the whole app as the dark grading stage and export instrument.
 
 > **Robustness note:** the orchestration parenthetical says PRODUCT/DESIGN may be "already authored." This phase is correct either way — treat root `PRODUCT.md`/`DESIGN.md` as required gates that must exist and pass `load-context.mjs`; **author fresh per §7 only if absent or placeholder.**
 
 ---
 
-## Phase 6 — Frontend UI (Vite/React, Impeccable chrome + dark media stage, all endpoints)
+## Phase 6 — Frontend UI (Vite/React, Dark Instrument, all endpoints)
 
-**Goal:** Single-page Vite/React/TS slicer that wires every endpoint, with Impeccable chrome and a neutral-dark media stage; filmstrip with per-frame exclude; zoom lightbox; live frame/weight budget meter.
+**Goal:** Single-page Vite/React/TS slicer that wires every endpoint in the dark instrument system; filmstrip with per-frame exclude; zoom lightbox; live frame/weight budget meter.
 
 **Targets:**
 - `frontend/` — Vite + React + TS; built to static assets served by FastAPI (one runtime process, no Next.js).
 - `frontend/src/lib/api.ts` — typed client for all §9 endpoints.
 - `frontend/src/config.ts` — **mirror** of backend `SLICE_CONSTANTS` (`DEFAULT_SLICE_SECONDS`, `MAX_SLICE_SECONDS`); no literal 10/60.
-- Components (chrome, light editorial): `ImportDrop`, `TrimSlider` (dual-handle, live frame-count + projected package-weight), `FpsControl` (presets 3/6/12 + custom + auto-suggest), `CropTool` (manual box + auto), `EraseTool` (paint/box region, tier label), `RenamePanel`, `ExportFlow` (slug/accent/copy → package → verify report → download), `RecentsList` (minimal, not a CRM).
-- Components (dark stage): `MediaStage` (video preview + canvas), `Filmstrip` (per-frame exclude toggle), `Lightbox` (zoom for pixel-peeping edges) — on `oklch(20% 0 0)`-ish surface.
+- Components: `ImportDrop`, `TrimSlider` (dual-handle, live frame-count + projected package-weight), `FpsControl` (presets 3/6/12 + custom + auto-suggest), `CropTool` (manual box + auto), `EraseTool` (paint/box region, tier label), `RenamePanel`, `ExportFlow` (slug/accent/copy → package → verify report → download), `RecentsList` (minimal, not a CRM).
+- Media surfaces: `MediaStage` (video preview + canvas), `Filmstrip` (per-frame exclude toggle), `Lightbox` (zoom for pixel-peeping edges) — all against Void Black/Panel Deep so frames grade true.
 - `BudgetMeter` — live `(duration × fps)` frame count + projected weight vs `WEIGHT_BUDGET`/`FRAME_BUDGET`; warns + auto-suggests lower fps.
 
 **Cherry-pick anchors:**
@@ -247,7 +246,7 @@
 - Component/integration tests (Vitest + Testing Library): trim slider clamps to `MAX_SLICE_SECONDS`; budget meter recomputes on duration/fps change and triggers fps auto-suggest; filmstrip exclude toggles update the finalize payload; export flow surfaces the `verify.mjs` gate report.
 - API client contract test against the running backend (happy path per endpoint).
 
-**Acceptance:** full flow drivable in-browser: import → trim → exclude → crop → erase → export; chrome reads as light-editorial Impeccable, media stage is neutral-dark; no literal 10/60; no banned patterns.
+**Acceptance:** full flow drivable in-browser: import → trim → exclude → crop → erase → export; chrome reads as the dark instrument in `DESIGN.md`; no literal 10/60; no banned patterns.
 
 ---
 
@@ -369,7 +368,7 @@ Discrete tasks with dependencies. Tasks in the same lane with no shared deps can
 - **T9.1** — Root `README.md` (token-burn pitch + SEO/CWV framing + non-goals). `[T8.1]`
 - **T9.2** — `LICENSE` (permissive) + `examples/sample-package/` (ship golden fixture). `[T0.4]`
 - **T9.3** — `.github/workflows/verify.yml` runs `verify.mjs` in CI. `[T9.2]`
-- **T_GATE** — **Anti-regression review (FINAL, blocks ship).** Grep **first-party code/output only** — `backend/`, `frontend/src/`, built package dirs, `start.command`, root `README.md` — and **exclude `docs/` and `.claude/skills/`** (the spec/plan legitimately quote these strings; the ported Impeccable skill is verbatim third-party Node). Fail on any hit: `DEBUG`/`print(`; `Gemma`/`mlx`/`MLX`/`AIClient`; `INPAINT_TELEA` outside an explicitly-labeled fallback; legacy `baseUrl`; experience metadata `trigger`/`effect`/`easing`; `INSTRUCTIONS.llm.md`/`VIDEO_PROMPT.md` ceremony; dead multi-format `.jpg/.jpeg/.png/.webp` checks; hardcoded `> 10.0` slice wall; stale schema `smart-image-animations.deliverable-package.v1` and stale `data-template-id` value `webp_guided_knowledge_2026`; dark Void-Black/Electric-Blue tokens. `[ALL code phases: T0–T9]`
+- **T_GATE** — **Anti-regression review (FINAL, blocks ship).** Grep first-party code/output and active docs. Fail on any hit that presents retired source behavior as current: `DEBUG`/`print(` in app code; `INPAINT_TELEA` as the default erase path; legacy `baseUrl`; experience metadata `trigger`/`effect`/`easing`; `INSTRUCTIONS.llm.md`/`VIDEO_PROMPT.md` ceremony; dead multi-format `.jpg/.jpeg/.png/.webp` checks; hardcoded `> 10.0` slice wall; stale schema `smart-image-animations.deliverable-package.v1`; stale `data-template-id` value `webp_guided_knowledge_2026`; light-editorial tokens outside explicit supersession notes. `[ALL code phases: T0–T9]`
 
 ### Critical path
 `T0.1/T0.2/T0.3 → T0.4 → (T4.1 needs T2.3+T3.3) → T4.4 → T8.1 → T9.1 → T_GATE`. Lanes C (design) and E.7.1 (share status) parallelize early; Lane B ops (crop/webp/erase) parallelize after T1.4.

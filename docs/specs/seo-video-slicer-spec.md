@@ -51,7 +51,7 @@ If a feature is not in service of *slice a video → clean frames → premium pa
 | Media | **ffmpeg** (extract/trim/cropdetect/delogo), **OpenCV** (crop/contour/erase), **Pillow** (WebP q82–90) | Battle-tested, cherry-picked from source `slicing.py`. |
 | Premium erase | **LaMa via IOPaint** when installed; **enhanced OpenCV** (NS + feather + temporal) fallback | Premium quality without forcing a torch install on every user. |
 | Frontend | **Vite + React + TypeScript**, built to static assets served by FastAPI | One runtime process, no Next.js bloat. Single-page slicer. |
-| Design | **Impeccable** system (ported) — chrome in light editorial, neutral-dark media stage | See §7. |
+| Design | **The Dark Instrument** (`DESIGN.md`) — Void-Black canvas, Panel-Deep panels, Hairline seams, one Electric Blue accent | See §7. |
 | Sharing | FastAPI binds to localhost + tailnet IP; **share status** endpoint surfaces local/Tailscale/LAN URLs | Cherry-picked `share.ts` / `/share/status` concept. |
 
 **Runner-up rejected:** pure Node/`npx` CLI + ffmpeg.wasm. Rejected because premium erase (neural inpaint) and quality crop are not achievable at this bar in Node/WASM, and Tailscale handoff wants a persistent server. The launch command stays a one-liner so it *feels* as light as `npx`.
@@ -113,30 +113,29 @@ Duration is **configurable, not a hard wall** — and the true governor is **fra
 
 ---
 
-## 7. Impeccable Design (ported)
+## 7. Design — The Dark Instrument (`DESIGN.md` is the system of record)
 
-Port the **Impeccable** design system (`/Volumes/Extreme SSD/AI-Applications/impeccable`) and its skill.
+> **Supersession note.** The light-editorial port ("The Editorial Darkroom" — Warm Ash Cream, Editorial Magenta, Cormorant Garamond / Instrument Sans / Space Grotesk, a scoped dark media stage) is **retired in full.** The design system of record is the dark **"Dark Instrument"** in `DESIGN.md`, backed verbatim by `frontend/src/styles/theme.css`. See `DESIGN.md`. No warm surfaces, no magenta, no serif, no webfonts, and no chrome-vs-stage split survive.
 
-**Carry over:**
-- Copy `.claude/skills/impeccable/` into this repo verbatim (portable, Node-stdlib only) so `/impeccable craft|audit|polish|live|detect` work here.
-- Copy `DESIGN.json` + `public/css/tokens.css` tokens **verbatim** as the token source.
+The SEO Video Slicer reads like a precision instrument the moment it opens — a scrub deck / frame-grading bench. The **whole interface** lives on **Void Black** (`oklch(8% 0 0)` — not pure black). Panels are **solid Panel Deep** (`oklch(15% 0 0)`), seamed from the canvas by **1px Hairline** (`oklch(22% 0 0)`), never by drop shadows. A single accent — **Electric Blue** (`oklch(65% 0.20 250)`) — carries every interactive and active state. There is no second hue.
 
-**`PRODUCT.md` / `DESIGN.md` — authored, NOT cherry-picked.** The Impeccable skill's setup gates require both at the **repo root** (`load-context.mjs` reads root first). These files are project-specific, so:
-- **`PRODUCT.md`** is authored **fresh** for seo-video-slicer (register `product`; our users, purpose, brand voice). We do **not** copy `smart-image-animations/docs/PRODUCT.md` (different product, dark aesthetic) or `impeccable/PRODUCT.md` (describes Impeccable itself).
-- **`DESIGN.md`** is authored for this repo by **porting the Impeccable design system**: copy the tokens verbatim, then write our framing — including the §7 chrome-vs-dark-stage decision and the media-stage dark tokens. `impeccable/DESIGN.md` is the structural template, not the copied content.
-- Equivalent to running `/impeccable teach` (→ PRODUCT.md) and `/impeccable document` (→ DESIGN.md) for this project, but seeded from this spec.
+**The design system is adopted, not authored from scratch.** `theme.css` is a **verbatim port of the source system of record** (`smart-image-animations/frontend/src/app/globals.css`) — i.e. we *kept* the source's dark palette and cut only its studio bloat (§2). `DESIGN.md` is the canonical narrative for those tokens; where the two ever disagree, **theme.css wins.**
 
-**Tokens (authoritative values):**
-- Accent: **Editorial Magenta** `oklch(60% 0.25 350)`, deep `oklch(52% 0.25 350)` — *the only* vibrant color (One Voice Rule).
-- Surfaces: **Warm Ash Cream** `oklch(96% 0.005 350)` page, **Crisp Paper White** `oklch(98% 0 0)` cards, **Paper Mist** `oklch(92% 0 0)` hairlines.
-- Ink: Deep Graphite `oklch(10% 0 0)`, Soft Charcoal `oklch(25% 0 0)`, Mid Ash `oklch(55% 0 0)`.
-- Type: **Cormorant Garamond** (display, 300 italic) · **Instrument Sans** (body, 1.6 leading) · **Space Grotesk** (mono/labels).
-- Motion: `--ease-out: cubic-bezier(0.16, 1, 0.3, 1)`; durations 0.15/0.3/0.6s. **No bounce/elastic.**
-- CTA: sharp `border-radius: 0`, uppercase label, lift + magenta on hover. Flat-by-default; shadows only on hover.
+**`PRODUCT.md` / `DESIGN.md` — authored fresh for this product:**
+- **`PRODUCT.md`** is authored **fresh** for seo-video-slicer (our users, purpose, brand voice). We do **not** copy `smart-image-animations/docs/PRODUCT.md` — that describes a *different product* (the studio), even though it shares the dark palette.
+- **`DESIGN.md`** is authored for this repo as **"The Dark Instrument"**: it mirrors the `theme.css` tokens 1:1 in its frontmatter, then writes our framing for the lean slicer. The source's `docs/DESIGN.md` is not copied (different product framing); the *tokens* are what carry over, via `theme.css`.
 
-**Application decision (confirm/veto):** Impeccable system on all **chrome** (header, sidebars, controls, export flow, recents). **Media stage** (video preview + filmstrip + lightbox) sits on a **neutral-dark surface** (`oklch(20% 0 0)`-ish) so extracted frames grade true — the pro-tool standard (Premiere/DaVinci). Still "the Impeccable design," using its dark-surface tokens where frame fidelity demands it.
+**Tokens (authoritative values — see `DESIGN.md` / `theme.css`):**
+- Accent: **Electric Blue** `oklch(65% 0.20 250)` — *the only* accent (The One Accent Rule). Status-only: Success `oklch(65% 0.15 150)`, Danger `oklch(55% 0.20 25)`.
+- Surfaces: **Void Black** `oklch(8% 0 0)` page, **Panel Deep** `oklch(15% 0 0)` panels/cards/inputs, **Hairline** `oklch(22% 0 0)` 1px seams.
+- Ink: Ink Primary `oklch(98% 0 0)` (headings, white-pill CTA), Ink Secondary `oklch(75% 0 0)` (body), Ink Muted `oklch(55% 0 0)` (captions, mono labels).
+- Type: **system-ui sans** (`system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif`) — bold 700, `-0.02em` tracking for display/headlines · **ui-monospace** (`ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, monospace`) for all technical readouts. No serif, no webfonts.
+- Motion: `--ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1)`; ~0.15/0.2/0.4s. **No bounce/elastic.**
+- CTA (`btn-primary`): **white pill** — Ink-Primary fill, Void-Black text, 999px radius; hover `translateY(-1px)` + opacity 0.88. Flat-by-default; the only sanctioned glow is the rare Electric-Blue `glow-glow`.
 
-**Anti-slop bans enforced (from Impeccable):** no side-stripe borders, no gradient text, no glassmorphism-as-default, no hero-metric template, no identical card grids, no bounce. Run `npx impeccable detect` / `/impeccable audit` as a gate.
+**Application decision:** the **entire app is the dark stage** — canvas, panels, and the media stage (video preview + filmstrip + lightbox) are one continuous dark surface, so extracted frames grade true against neutral darkness (the pro-tool standard — Premiere/DaVinci/Lightroom). There is no light chrome to leak warmth onto the frame, and there is no scoped dark-stage *exception* — the whole instrument is dark. (The media stage may use the deepest surface, Void Black, against the surrounding Panel-Deep panels, so it still reads as the grading bench — a tone step within one dark system, not a separate light/dark split.)
+
+**Anti-slop bans (per `DESIGN.md`):** no side-stripe borders, no gradient text, no glassmorphism / `backdrop-filter`, no hero-metric template, no identical card grids, no bounce, no second accent hue, no pure `#000`/`#fff`. Structure is drawn with hairlines and tone steps, not drop shadows.
 
 ---
 
@@ -235,7 +234,7 @@ Drop from source: all `/ai/*`, `/experiences/*` generation, `/context/*`, model 
 | Canvas cover-fit scroll player | `animation_templates.py` (apple_scroll_zoom) | Distill → ONE `index.html` |
 | Share (local/Tailscale) | `frontend/src/lib/share.ts`, `/share/status` | Keep |
 | Slicer UI flow (trim/fps/filmstrip/exclude/crop/erase) | `frontend/src/app/slicer/[jobId]/page.tsx` | Re-skin to Impeccable, de-bloat |
-| Impeccable design system + skill | `/AI-Applications/impeccable/` | Port tokens + skill |
+| Impeccable **skill** (audit tooling) | `/AI-Applications/impeccable/` | Port the skill only. **Tokens are `theme.css`** (the Dark Instrument, §7) — *not* Impeccable's light `tokens.css`. |
 
 ---
 
@@ -253,7 +252,7 @@ We cherry-pick **patterns**, re-implemented clean against this spec. We do **not
 | **`resize_factor = 1.0 # Optimize if needed`, commented hints, dead vars** | `slicing.py:211` etc. | Drop dead/aspirational code and comments. |
 | **Old "experience" meta fields** (`trigger`, `effect`, `easing`, `prompt`, GSAP) | `slicing.py:374-384` | Our `manifest.json` is a fresh schema (§8). Don't carry GSAP-studio metadata. |
 | **Gold-standard multi-doc package ceremony** (`INSTRUCTIONS.llm.md`, `VIDEO_PROMPT.md`, `USE_CASES.md`, `VARIANTS.md`, `design-tokens.css`, `component/animation.tsx`) | `frontend/public/templates/packages/.../` | Our package is the lean §8 contract. Take the **verify.mjs + fingerprint pattern**, not the doc pile. |
-| **Source `PRODUCT.md` / `DESIGN.md`** (dark Void-Black/Electric-Blue brand) | `docs/PRODUCT.md`, `docs/DESIGN.md` | Author **fresh** (§7). Copying would contradict the Impeccable design. |
+| **Source `PRODUCT.md` / `DESIGN.md`** (dark Void-Black/Electric-Blue brand) | `docs/PRODUCT.md`, `docs/DESIGN.md` | Author **fresh** (§7). The *tokens* carry over (theme.css is a verbatim port of source `globals.css`), but the source docs describe a **different product** (the studio) — so our `DESIGN.md`/`PRODUCT.md` re-author the framing for the lean slicer, not copy the source narrative. |
 | **MLX/Gemma stack, benchmarks, demos/** (`mlx_*.py`, `bench_*`, `bench_results.json`, `demos/`) | repo-wide | Not ported at all (§2). |
 | **Next.js-specific scaffolding & studio routes** (`slicer/[jobId]`, `animation-guide`, dashboard) | `frontend/src/app/...` | We rebuild a single-page Vite/React UI; port the slicer *interactions*, not the Next route tree or studio tabs. |
 | **Hardcoded `if (end - start) > 10.0` wall** | `slicing.py:14` | Replaced by `MAX_SLICE_SECONDS` constant + frame-budget check (§5.1). |
@@ -267,8 +266,8 @@ We cherry-pick **patterns**, re-implemented clean against this spec. We do **not
 2. **Slicing ops** — crop (+ watermark enforcer), WebP, rename.
 3. **Premium erase** — two-tier engine + selection + temporal coherence.
 4. **Packager** — build contract package, portable paths, zip, run `verify.mjs`, expose download.
-5. **Design port** — copy Impeccable skill + tokens; author `PRODUCT.md`/`DESIGN.md`.
-6. **Frontend** — Vite/React Impeccable UI (chrome) + dark media stage; wire all endpoints; lightbox.
+5. **Design port** — copy the Impeccable **skill** (audit tooling); the design tokens are `theme.css` (the Dark Instrument, §7), not Impeccable's light `tokens.css`. Author `PRODUCT.md`/`DESIGN.md` fresh.
+6. **Frontend** — Vite/React Dark-Instrument UI (§7, `DESIGN.md`/`theme.css`); wire all endpoints; lightbox.
 7. **Share** — local/Tailscale/LAN URL surfacing; launcher.
 8. **Polish & gate** — `/impeccable audit`, `npx impeccable detect`, end-to-end: real video → package → opens & animates → `verify.mjs` green.
 9. **OSS readiness** — README (token-burn pitch + SEO/CWV framing), LICENSE (permissive), examples, sample package, CI running `verify.mjs`.

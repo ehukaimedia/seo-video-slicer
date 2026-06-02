@@ -1,0 +1,52 @@
+{
+  "schema": "seo-video-slicer.package.v1",
+  "id": "sample-orbs",
+  "created_at": "2026-06-02T07:16:07Z",
+  "source": {
+    "duration_s": 10,
+    "fps_effective": 3,
+    "resolution": "1280x720",
+    "origin": "user-supplied video"
+  },
+  "frames": {
+    "count": 30,
+    "pattern": "frames/frame_NNN.webp",
+    "format": "webp",
+    "quality": 82
+  },
+  "player": {
+    "canonical": "index.html",
+    "interaction": "scroll",
+    "dependencies": {
+      "gsap": "3.12.2 (optional)"
+    },
+    "reduced_motion": true,
+    "template_id": "seo-video-slicer.scroll.v1"
+  },
+  "customization": {
+    "locked_zones": [
+      "frames/*.webp bytes",
+      "frame_NNN zero-pad ordering",
+      "cover-fit single-canvas render",
+      "reduced-motion fallback",
+      "player data-template-id"
+    ],
+    "safe_zones": [
+      "accent color",
+      "headline/overlay copy",
+      "scroll distance",
+      "easing",
+      "container height",
+      "framework wrapper"
+    ]
+  },
+  "seo": {
+    "lcp_safe": true,
+    "total_bytes": 1049144,
+    "lazy_loadable": true
+  },
+  "fingerprint": {
+    "algorithm": "sha256",
+    "value": "960344e014eee5be0317ddce9542a57e48b228e09eb3e592491555ff9ca802b7"
+  }
+}
