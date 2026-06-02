@@ -1,0 +1,50 @@
+# --- OS / editor ---
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# --- Python (backend) ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Node / frontend ---
+node_modules/
+dist/
+build/
+.vite/
+*.tsbuildinfo
+.eslintcache
+
+# --- Runtime data: uploaded videos, preview/slice frames, working jobs ---
+data/
+.runtime/
+.tmp-*/
+
+# --- Scratch examples: generated test inputs/outputs, not source ---
+examples/
+
+# --- Exported package zips ---
+*.zip
+
+# --- Premium-erase model cache (IOPaint / LaMa weights) ---
+.iopaint/
+models/lama/
+*.ckpt
+*.pt
+*.pth
+
+# --- Local agent / editor config (design system lives in DESIGN.md) ---
+.claude/
+
+# --- Secrets / local config ---
+.env
+.env.local
+*.local

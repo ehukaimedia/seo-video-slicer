@@ -1,0 +1,16 @@
+# SEO Video Slicer — PREMIUM erase tier (OPTIONAL — not installed by default).
+#
+# Installing this pulls in torch + IOPaint (LaMa neural inpainting, ~200MB model
+# auto-downloaded on first use). The app works fully without it: erase falls back
+# to the always-available OpenCV baseline tier and reports tier_used="baseline".
+#
+# Install ONLY if you want the premium neural erase:
+#   pip install -r backend/requirements-premium.txt
+#
+# The backend NEVER auto-pip-installs torch. This file is the explicit, user-driven
+# opt-in. After install, erase tier="auto" (or "premium") selects LaMa automatically.
+
+iopaint>=1.3.0
+# torch is pulled in transitively by iopaint; pin here only if you need a specific
+# build (e.g. a CPU-only or MPS-tuned wheel for Apple Silicon):
+# torch>=2.1

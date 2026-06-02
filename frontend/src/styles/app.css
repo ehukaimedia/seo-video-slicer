@@ -1,0 +1,1007 @@
+/**
+ * app.css — the dark Electric-Blue studio: layout shell, dashboard library, and
+ * the slicer workspace. Spacing, grid and structure only — every color, border
+ * and font comes from theme.css tokens (void-black surfaces, hairline borders,
+ * the one accent, system fonts). No cream, no magenta, no serif anywhere.
+ */
+
+/* ── Top bar (shared by dashboard + slicer) ─────────────────────────────── */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 18px clamp(20px, 4vw, 56px);
+  background: oklch(8% 0 0 / 0.82);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--hairline);
+  flex-wrap: wrap;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.topbar-status {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+/* Segmented Local / Tailscale pill toggle. */
+.segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--panel-deep);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  padding: 3px;
+}
+
+.segmented-btn {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: color 0.2s var(--ease-out-expo), background 0.2s var(--ease-out-expo);
+}
+
+.segmented-btn[data-active='true'] {
+  color: var(--void-black);
+  background: var(--ink-primary);
+  font-weight: 600;
+}
+
+.segmented-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.share-url {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--ink-secondary);
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Dashboard ──────────────────────────────────────────────────────────── */
+.dash {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: clamp(40px, 6vw, 72px) clamp(20px, 4vw, 56px) 96px;
+}
+
+.dash-hero {
+  margin-bottom: 56px;
+  max-width: 760px;
+}
+
+.dash-hero h1 {
+  font-size: clamp(2.4rem, 6vw, 3.4rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+  margin: 16px 0 16px;
+  color: var(--ink-primary);
+}
+
+.dash-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  margin-bottom: 64px;
+}
+
+.dash-section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.dash-section-head h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink-primary);
+}
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 24px;
+}
+
+/* A library job card (glass-card, padding overridden for the banner layout). */
+.job-card {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+}
+
+.job-card-thumb {
+  position: relative;
+  height: 140px;
+  background: oklch(12% 0 0);
+  border-bottom: 1px solid var(--hairline);
+  overflow: hidden;
+}
+
+.job-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.job-card-thumb-empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: oklch(30% 0 0);
+}
+
+.job-card-id {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.job-card-body {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.job-card-title {
+  font-size: 1.12rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-card-meta {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--ink-muted);
+}
+
+.job-card-foot {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--hairline);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.job-card-tags {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* Dashed empty-state / new-slice card. */
+.job-card-empty {
+  border: 1px dashed var(--hairline);
+  border-radius: 12px;
+  background: transparent;
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+  padding: 32px;
+  cursor: pointer;
+  color: var(--ink-muted);
+  transition: border-color 0.2s var(--ease-out-expo), color 0.2s var(--ease-out-expo);
+}
+
+.job-card-empty:hover {
+  border-color: oklch(65% 0.20 250 / 0.4);
+  color: var(--accent);
+}
+
+.dash-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 80px 24px;
+  border: 1px dashed var(--hairline);
+  border-radius: 12px;
+}
+
+/* Card three-dot menu popover. */
+.menu-pop {
+  position: absolute;
+  bottom: 36px;
+  right: 0;
+  min-width: 168px;
+  background: var(--panel-deep);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 20;
+  box-shadow: 0 12px 32px oklch(0% 0 0 / 0.5);
+}
+
+.menu-divider {
+  height: 1px;
+  background: var(--hairline);
+  margin: 4px 6px;
+}
+
+/* ── Slicer workspace shell ─────────────────────────────────────────────── */
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 28px;
+  max-width: 1320px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 28px clamp(20px, 3vw, 40px) 80px;
+  align-items: start;
+}
+
+@media (max-width: 920px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Left sidebar with SAVED SLICES + PACKAGES rails. */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  position: sticky;
+  top: 88px;
+}
+
+.sidebar-section-head {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.sidebar-count {
+  margin-left: auto;
+  color: var(--accent);
+}
+
+.rail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rail-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  background: var(--panel-deep);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  transition: border-color 0.2s var(--ease-out-expo);
+}
+
+.rail-card[data-active='true'] {
+  border-color: var(--accent);
+}
+
+.rail-card-clickable {
+  cursor: pointer;
+}
+
+.rail-card-clickable:hover {
+  border-color: oklch(65% 0.20 250 / 0.4);
+}
+
+.rail-thumb {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  border-radius: 6px;
+  object-fit: cover;
+  background: oklch(12% 0 0);
+  border: 1px solid var(--hairline);
+}
+
+.rail-thumb-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: oklch(32% 0 0);
+}
+
+.rail-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rail-title {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--ink-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rail-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rail-frames {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  color: var(--ink-muted);
+}
+
+.rail-actions {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.icon-btn-danger {
+  background: transparent;
+  border: 1px solid var(--hairline);
+  color: var(--ink-muted);
+  padding: 7px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s var(--ease-out-expo), color 0.2s var(--ease-out-expo);
+}
+
+.icon-btn-danger:hover {
+  border-color: oklch(55% 0.20 25 / 0.5);
+  color: var(--danger);
+}
+
+.rail-empty {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--ink-muted);
+  padding: 14px;
+  border: 1px dashed var(--hairline);
+  border-radius: 10px;
+  text-align: center;
+}
+
+/* Main working column. */
+.app-main {
+  min-width: 0;
+}
+
+/* Step rail (horizontal pipeline crumbs above the working column). */
+.app-rail {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+}
+
+.rail-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  padding: 7px 16px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: border-color 0.2s var(--ease-out-expo), color 0.2s var(--ease-out-expo);
+}
+
+.rail-step .num {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--ink-muted);
+}
+
+.rail-step[data-active='true'] {
+  border-color: var(--accent);
+  color: var(--ink-primary);
+}
+
+.rail-step[data-active='true'] .num {
+  color: var(--accent);
+}
+
+.rail-step[data-done='true'] {
+  color: var(--ink-secondary);
+}
+
+.rail-step:hover:not(:disabled) {
+  border-color: oklch(35% 0 0);
+  color: var(--ink-primary);
+}
+
+.rail-step:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.step-head {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+/* ── Dropzone (upload empty state) ──────────────────────────────────────── */
+.dropzone {
+  border: 1px dashed var(--hairline);
+  border-radius: 16px;
+  background: var(--panel-deep);
+  padding: 64px 32px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: border-color 0.2s var(--ease-out-expo), background 0.2s var(--ease-out-expo);
+}
+
+.dropzone:hover,
+.dropzone[data-drag='true'] {
+  border-color: var(--accent);
+  background: oklch(65% 0.20 250 / 0.03);
+}
+
+.dropzone .glyph {
+  font-size: 2.4rem;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.dropzone .hint {
+  margin-top: 8px;
+}
+
+/* ── Banners + busy + toast ─────────────────────────────────────────────── */
+.error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  border-radius: 10px;
+  border: 1px solid oklch(55% 0.20 25 / 0.4);
+  background: oklch(55% 0.20 25 / 0.08);
+  color: oklch(72% 0.12 25);
+  font-size: 0.88rem;
+}
+
+.busy-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.busy-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1.6s infinite;
+}
+
+.toast-host {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 900;
+}
+
+.ds-toast {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-radius: 999px;
+  background: var(--panel-deep);
+  border: 1px solid var(--hairline);
+  color: var(--ink-primary);
+  font-size: 0.84rem;
+  box-shadow: 0 12px 32px oklch(0% 0 0 / 0.5);
+  animation: fadeIn 0.3s var(--ease-out-expo);
+}
+
+.ds-toast-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+}
+
+/* ── Trim (TRIM SEGMENT BOUNDS) ─────────────────────────────────────────── */
+.trim-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.trim-span {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+}
+
+/* The dual-handle trim track lives on the dark stage; reuses theme.css
+ * .dual-range-* primitives. These add the playhead marker + readout. */
+.ds-trim {
+  position: relative;
+  width: 100%;
+  height: 28px;
+  cursor: pointer;
+}
+
+.ds-trim-track {
+  position: absolute;
+  top: 12px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--hairline);
+  border-radius: 2px;
+}
+
+.ds-trim-range {
+  position: absolute;
+  top: 12px;
+  height: 4px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+.ds-trim-playhead {
+  position: absolute;
+  top: 4px;
+  width: 2px;
+  height: 20px;
+  background: var(--ink-secondary);
+  transform: translateX(-1px);
+  pointer-events: none;
+}
+
+.ds-trim-handle {
+  position: absolute;
+  top: 6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--ink-primary);
+  border: 2px solid var(--accent);
+  box-shadow: 0 2px 5px oklch(0% 0 0 / 0.45);
+  transform: translateX(-8px);
+  cursor: grab;
+  padding: 0;
+  transition: transform 0.1s;
+}
+
+.ds-trim-handle:hover,
+.ds-trim-handle:focus-visible {
+  transform: translateX(-8px) scale(1.15);
+  outline: none;
+}
+
+.ds-trim-readout {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--ink-muted);
+}
+
+/* fps preset chips (reuse preset-pill semantics). */
+.fps-presets {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.fps-chip {
+  background: transparent;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 9px 14px;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  transition: border-color 0.2s var(--ease-out-expo), color 0.2s var(--ease-out-expo);
+}
+
+.fps-chip[data-active='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.fps-chip:hover {
+  border-color: oklch(65% 0.20 250 / 0.4);
+  color: var(--accent);
+}
+
+.fps-custom {
+  max-width: 120px;
+}
+
+.fps-suggest {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--ink-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Budget meter (accent fill) ─────────────────────────────────────────── */
+.meter {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+  background: var(--panel-deep);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+}
+
+.meter-bar {
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--hairline);
+  overflow: hidden;
+}
+
+.meter-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--accent);
+  transition: width 0.3s var(--ease-out-expo);
+}
+
+.meter-fill[data-tone='warn'] {
+  background: oklch(70% 0.15 70);
+}
+
+.meter-fill[data-tone='over'] {
+  background: var(--danger);
+}
+
+.meter-bands {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.meter-band-mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: oklch(98% 0 0 / 0.18);
+}
+
+.meter-readout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.meter-readout .ds-mono {
+  font-size: 0.74rem;
+  color: var(--ink-secondary);
+}
+
+.meter-msg {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+
+.meter-msg[data-tone='warn'] {
+  color: oklch(75% 0.12 70);
+}
+
+.meter-msg[data-tone='over'] {
+  color: oklch(70% 0.16 25);
+}
+
+/* ── Sequence utilities bar ─────────────────────────────────────────────── */
+.utility-bar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Zoom slider for the filmstrip. */
+.zoom-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.zoom-row input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 160px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--hairline);
+  outline: none;
+}
+
+.zoom-row input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+/* ── Filmstrip (with success-green check-badge toggles) ─────────────────── */
+.ds-filmstrip {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-size, 132px), 1fr));
+  gap: 12px;
+}
+
+.ds-filmstrip-thumb {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  background: oklch(10% 0 0);
+  cursor: pointer;
+  aspect-ratio: 16 / 9;
+  transition: border-color 0.2s var(--ease-out-expo);
+}
+
+.ds-filmstrip-thumb:hover {
+  border-color: oklch(65% 0.20 250 / 0.4);
+}
+
+.ds-filmstrip-thumb[data-active='true'] {
+  border-color: var(--accent);
+}
+
+.ds-filmstrip-thumb[data-excluded='true'] {
+  opacity: 0.4;
+}
+
+.ds-filmstrip-thumb[data-excluded='true'] img {
+  filter: grayscale(1);
+}
+
+.ds-filmstrip-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.ds-filmstrip-index {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--ink-primary);
+  background: oklch(8% 0 0 / 0.75);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.ds-filmstrip-thumb[data-excluded='true'] .ds-filmstrip-index {
+  text-decoration: line-through;
+}
+
+/* The corner toggle: a success-green check when kept, hollow when excluded. */
+.ds-exclude-toggle {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--success);
+  background: var(--success);
+  color: var(--void-black);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 0 0 2px var(--void-black);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.ds-exclude-toggle svg {
+  width: 12px;
+  height: 12px;
+  stroke: currentColor;
+  stroke-width: 3;
+}
+
+.ds-filmstrip-thumb[data-excluded='true'] .ds-exclude-toggle {
+  background: transparent;
+  border-color: var(--ink-muted);
+  color: var(--ink-muted);
+}
+
+/* ── Export panel ───────────────────────────────────────────────────────── */
+.ds-export-panel {
+  background: var(--panel-deep);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  transition: box-shadow 0.3s var(--ease-out-expo), border-color 0.3s var(--ease-out-expo);
+}
+
+/* The ready CTA earns the ambient accent glow (theme.css .glow-glow). */
+.ds-export-panel[data-ready='true'] {
+  box-shadow: 0 0 20px oklch(65% 0.20 250 / 0.15);
+  border-color: oklch(65% 0.20 250 / 0.4);
+}
+
+.include-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.include-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid oklch(98% 0 0 / 0.05);
+}
+
+.include-row .label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.ds-export-stat {
+  font-size: 0.85rem;
+  color: var(--ink-secondary);
+  text-align: right;
+}
+
+.gate-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gate-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 0.82rem;
+  color: var(--ink-secondary);
+  line-height: 1.4;
+}
+
+.gate-mark {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--hairline);
+  color: var(--ink-muted);
+}
+
+.gate-mark[data-pass='true'] {
+  color: var(--success);
+  border-color: oklch(65% 0.15 150 / 0.4);
+  background: oklch(65% 0.15 150 / 0.08);
+}
+
+.gate-mark[data-pass='false'] {
+  color: oklch(65% 0.20 25);
+  border-color: oklch(55% 0.20 25 / 0.4);
+  background: oklch(55% 0.20 25 / 0.08);
+}
+
+.share-list {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 20px;
+  border-top: 1px solid var(--hairline);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--ink-secondary);
+}
