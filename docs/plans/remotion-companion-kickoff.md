@@ -4,7 +4,9 @@
 **Branch:** `feat/remotion-companion` (off `main` @ v0.1.1).
 **Date seeded:** 2026-06-02.
 
-> Read this first, then run the brainstorming skill to confirm intent, then `playground-architect` to write the spec, then implement via a workflow. Do **not** start coding until the five decisions are pinned.
+> Read this first, then run the brainstorming skill to confirm intent, then `playground-architect` to write the spec, then implement via workflows. Do **not** start coding until the five decisions are pinned.
+>
+> **Built at `ultracode` (xhigh + multi-agent workflows).** Orchestrate every substantive phase with the **Workflow tool** — contract-first, fan-out build lanes that own distinct files, then verify/gate phases. Don't hand-build serially. See "Run this at ultracode" below.
 
 ---
 
@@ -52,12 +54,27 @@ Two output modes requested: **scrolling** (already shipped — the `index.html` 
 
 Then fast-follow: **loop mode** (player variant + animated-WebP export, `…loop.v1`).
 
-## Suggested process for the new session
+## Run this at ultracode — workflow orchestration plan
 
-1. `superpowers:brainstorming` — confirm the five decisions with the user.
-2. `playground-architect` — write the spec + a Spec Seed (tool signatures, the loop contract, the MCP shapes).
-3. `writing-plans` → a workflow to implement, building to the frozen contract + a new `…loop.v1` template, with `verify.mjs` coverage.
-4. PR per `CONTRIBUTING.md`; verify the MCP server against a real Remotion `--sequence` render.
+This feature is built at **ultracode** (xhigh + multi-agent workflows). Use the **Workflow tool** for every substantive phase; mirror how the slicer itself was built — **contract-first**, fan-out build lanes that own **distinct files** (no write contention), then a verify/gate phase. Lean toward **adversarial verification**: prove the kernel works (and *see* it in a browser) before fanning out. Run **several workflows in sequence**, reading each result before the next — not one mega-run.
+
+**Process**
+1. `superpowers:brainstorming` — confirm the five decisions with the user. (Do this BEFORE any workflow; it determines what fans out.)
+2. `playground-architect` — author the spec + a Spec Seed (headless CLI signature, the `…loop.v1` contract, the MCP tool shapes, the Remotion ingest) as a spec playground under `docs/playgrounds/specs/`. Adversarially review it (a small judge/critic workflow) before implementing.
+3. Implement via the **contract-first workflows** below.
+4. PR per `CONTRIBUTING.md`; `make test` + CI green; verify against a REAL Remotion `--sequence` render.
+
+**Phase 0 — contract-first kernel (one workflow → then SEE it work).** Freeze the loop contract: a new `seo-video-slicer.loop.v1` template (auto-advancing rAF player + an animated-WebP export). Extend `verify.mjs` with loop gates — **keep the v1 scroll path untouched** and the fingerprint recipe byte-identical between builder and verifier. Build a golden loop package and gate it with **negative-corruption tests** (as P0 did for v1). Then **actually open the loop player in a browser (chrome-devtools MCP)** and confirm it loops + has zero external requests, before building anything else.
+
+**Phase 1 — parallel build lanes (one workflow; each agent owns a distinct path):**
+  - **headless CLI** — `slice <video|frames-dir> … --mode scroll|loop` over `build_package.mjs` (owns the `backend/app/cli.py` `slice` subcommand + tests).
+  - **loop player + animated-WebP export** — to the Phase-0 contract (owns the kernel loop bits).
+  - **MCP server** — `slice_video` / `slice_frames` (stdio) returning `{package_dir, verify}` (owns `mcp/`).
+  - **Remotion recipe** — `--sequence` → `slice frames` → embed (owns `docs/` + `examples/remotion/`).
+
+**Phase 2 — integrate & verify (one workflow, structured-output verify agent):** run the MCP server end-to-end against a real Remotion `--sequence` render; assert the returned package passes `verify.mjs`; smoke the headless CLI both ways (video + frames); CI green. Report any silent caps / dropped coverage — no silent truncation.
+
+**Quality patterns to reach for:** contract-first kernel → adversarial verify (multiple skeptics per finding) → loop-until-dry for edge cases. Spawn lanes in ONE workflow message so they run concurrently; default to `pipeline()` where stages chain per-item; use a `parallel()` barrier only when a stage needs all prior results. Call the **advisor** before committing to the spec and before each implementation workflow.
 
 ## Pointers
 
