@@ -6,6 +6,8 @@
 
 [![CI](https://github.com/ehukaimedia/seo-video-slicer/actions/workflows/ci.yml/badge.svg)](https://github.com/ehukaimedia/seo-video-slicer/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 ![Status](https://img.shields.io/badge/status-alpha-orange)
 ![Backend](https://img.shields.io/badge/backend-FastAPI%20%2B%20ffmpeg%20%2B%20OpenCV-0b7)
 ![Frontend](https://img.shields.io/badge/frontend-Vite%20%2B%20React%20%2B%20TS-09f)
@@ -116,7 +118,7 @@ The package layout, the `index.html` player techniques (cover‑fit single canva
 
 ```
 backend/app/        FastAPI: upload, slice, crop, two-tier erase, packager, share, management
-frontend/src/       the Impeccable dark slicer UI
+frontend/src/       the "Dark Instrument" slicer UI
 package-contract/   the frozen package kernel (CONTRACT.md, player template, verify.mjs, build_package.mjs)
 docs/               spec, plan, architecture playground, assets
 DESIGN.md           the design system of record ("The Dark Instrument")
@@ -133,15 +135,18 @@ Alpha — the full pipeline works end‑to‑end (verified on real footage). On 
 - [x] Spec + architecture playground on the current dark design system
 - [ ] `npx`/`uvx` zero‑clone story and a hosted live demo
 
-### Development
+## Contributing
+
+Contributions are welcome — issues, PRs, and docs. The quick loop:
 
 ```bash
 make setup     # venv + deps + npm install
 make test      # backend pytest + kernel verify
 make build     # build the UI
+make run       # start the app on localhost:8000
 ```
 
-Issues and PRs welcome.
+Read **[CONTRIBUTING.md](CONTRIBUTING.md)** for setup, the frozen package contract, the design system, and the PR process. By participating you agree to the **[Code of Conduct](CODE_OF_CONDUCT.md)**. To report a vulnerability, see **[SECURITY.md](SECURITY.md)**. Notable changes are tracked in the **[CHANGELOG](CHANGELOG.md)**.
 
 ## License
 

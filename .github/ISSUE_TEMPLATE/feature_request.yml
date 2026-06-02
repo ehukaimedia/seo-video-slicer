@@ -1,0 +1,53 @@
+name: Feature request
+description: Suggest an idea or improvement for SEO Video Slicer.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea! SEO Video Slicer is intentionally lean — it slices a
+        short video into a drop-in WebP animation package and nothing more. Please
+        check the scope acknowledgement at the bottom before filing.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / use-case
+      description: |
+        What problem are you trying to solve, and in what situation? Focus on the
+        need, not a specific implementation. "I'm always frustrated when…"
+      placeholder: e.g. When slicing many clips, I can't see the exported package size before download.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed solution
+      description: A clear and concise description of what you want to happen.
+      placeholder: e.g. Show the total package byte size and frame count in the export panel.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any alternative solutions or workarounds you have considered.
+      placeholder: e.g. I currently check the size manually with `du -sh` after exporting.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope acknowledgement
+      description: |
+        SEO Video Slicer is intentionally lean (see PRODUCT.md / spec §2).
+        The following are explicit non-goals and are out of scope by design.
+      options:
+        - label: I understand the project has NO in-app animation generator, NO local LLM, and NO chat assistant, and this request does not add any of those.
+          required: true
+        - label: This request fits the lean scope of the tool (slice a video into a drop-in WebP animation package).
+          required: true
