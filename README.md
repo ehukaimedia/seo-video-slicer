@@ -66,7 +66,21 @@ A dark, technical instrument: Void‑Black canvas, one Electric‑Blue accent, f
 
 ## Quickstart
 
-**Requirements:** [ffmpeg](https://ffmpeg.org/), Python 3.10+, Node 18+. (Premium neural erase is optional and never auto‑installed.)
+🔴 **Live demo:** watch a real exported package animate at **[ehukaimedia.github.io/seo-video-slicer](https://ehukaimedia.github.io/seo-video-slicer/)** — a static page running the actual scroll-player (the slicer itself stays local).
+
+**Requirements:** [ffmpeg](https://ffmpeg.org/) and [Node](https://nodejs.org/) 18+ on your PATH (the media tools + the package kernel); Python 3.10+ for the clone path. (Premium neural erase is optional and never auto‑installed.)
+
+### Run without cloning — `uvx`
+
+No clone, no Docker, no server to host. Grab the wheel URL from the [latest release](https://github.com/ehukaimedia/seo-video-slicer/releases/latest), then:
+
+```bash
+uvx --from <release-wheel-url> seo-video-slicer    # → http://localhost:8000
+```
+
+The wheel bundles the built UI and the package kernel; you just need `ffmpeg` and `node` on PATH. Set `SVS_PORT` to change the port; your slices land in `~/.seo-video-slicer/`.
+
+### Or clone and run
 
 ```bash
 git clone https://github.com/ehukaimedia/seo-video-slicer.git
@@ -133,7 +147,8 @@ Alpha — the full pipeline works end‑to‑end (verified on real footage). On 
 - [x] A curated example package + an animated demo
 - [x] Cross‑platform launch (`start.sh`, `Makefile`)
 - [x] Spec + architecture playground on the current dark design system
-- [ ] `npx`/`uvx` zero‑clone story and a hosted live demo
+- [x] `uvx` zero‑clone launch (a wheel with the UI bundled, attached to each release)
+- [x] A static live demo on GitHub Pages
 
 ## Contributing
 

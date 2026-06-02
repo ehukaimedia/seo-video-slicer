@@ -23,6 +23,10 @@ build/
 *.tsbuildinfo
 .eslintcache
 
+# --- Wheel build: UI + kernel bundled into the package by scripts/build-wheel.sh ---
+backend/app/_web/
+backend/app/_kernel/
+
 # --- Runtime data: uploaded videos, preview/slice frames, working jobs ---
 data/
 .runtime/

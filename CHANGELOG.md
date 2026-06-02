@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- `uvx` zero-clone launch: a release wheel bundles the built UI and the package kernel, so `uvx --from <release-wheel> seo-video-slicer` runs the tool with no clone, no Docker, and no hosted server (ffmpeg + Node remain on-PATH prerequisites).
+- A static live demo on GitHub Pages that runs a real exported scroll-player.
+
+### Changed
+
+- Upgraded Vite 5 → 8, clearing the esbuild dev-server advisory (`npm audit` is clean).
 
 ## [0.1.0] - 2026-06-01
 
