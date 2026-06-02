@@ -48,3 +48,6 @@ models/lama/
 .env
 .env.local
 *.local
+
+# --- Agent scratch context ---
+.agents/
