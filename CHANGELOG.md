@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [0.1.1] - 2026-06-02
+
 ### Added
 
 - `uvx` zero-clone launch: a release wheel bundles the built UI and the package kernel, so `uvx --from <release-wheel> seo-video-slicer` runs the tool with no clone, no Docker, and no hosted server (ffmpeg + Node remain on-PATH prerequisites).
@@ -31,5 +35,6 @@ Initial public release.
 - Cross-platform launch via `start.sh`, `start.command`, and a `Makefile`.
 - README, an example animation package, and an animated demo.
 
-[Unreleased]: https://github.com/ehukaimedia/seo-video-slicer/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/ehukaimedia/seo-video-slicer/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/ehukaimedia/seo-video-slicer/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/ehukaimedia/seo-video-slicer/releases/tag/v0.1.0
