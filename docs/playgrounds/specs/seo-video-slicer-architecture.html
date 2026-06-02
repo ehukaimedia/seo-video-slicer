@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SEO Video Slicer — Architecture &amp; Spec Seed</title>
+<style>
+  /* ============================================================
+     IMPECCABLE TOKENS (ported verbatim from
+     frontend/src/styles/impeccable-tokens.css)
+     Light editorial chrome. The ONLY vibrant color is Editorial
+     Magenta, used on <10% of the surface. One Voice Rule.
+     ============================================================ */
+  :root {
+    --font-display: 'Cormorant Garamond', Georgia, serif;
+    --font-body: 'Instrument Sans', system-ui, sans-serif;
+    --font-mono: 'Space Grotesk', ui-monospace, monospace;
+
+    --spacing-xs: 8px;
+    --spacing-sm: 16px;
+    --spacing-md: 24px;
+    --spacing-lg: 32px;
+    --spacing-xl: 48px;
+    --spacing-2xl: 80px;
+    --spacing-3xl: 120px;
+
+    --width-max: 1400px;
+    --width-content: 900px;
+
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+    --duration-fast: 0.15s;
+    --duration-base: 0.3s;
+    --duration-slow: 0.6s;
+
+    /* Core neutrals — light editorial */
+    --color-ink: oklch(10% 0 0);          /* Deep Graphite */
+    --color-charcoal: oklch(25% 0 0);     /* Soft Charcoal */
+    --color-ash: oklch(55% 0 0);          /* Mid Ash */
+    --color-paper: oklch(98% 0 0);        /* Crisp Paper White */
+    --color-cream: oklch(96% 0.005 350);  /* Warm Ash Cream (page) */
+    --color-mist: oklch(92% 0 0);         /* Paper Mist (hairlines) */
+
+    /* Accent — Editorial Magenta (the single vibrant voice) */
+    --color-accent: oklch(60% 0.25 350);
+    --color-accent-hover: oklch(52% 0.25 350);
+    --color-accent-whisper: oklch(60% 0.25 350 / 0.15);
+    --color-accent-veil: oklch(60% 0.25 350 / 0.25);
+
+    /* Media stage — the ONE place a dark surface is permitted, so
+       extracted frames grade true (Premiere/DaVinci standard, §7). */
+    /* Media-stage tokens mirrored from /DESIGN.md (system of record) — neutral dark, never warm */
+    --stage-dark: oklch(20% 0 0);
+    --stage-dark-deep: oklch(14% 0 0);
+    --stage-ink-inv: oklch(92% 0 0);
+    --stage-ink-dim: oklch(70% 0 0);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  * { margin: 0; }
+  img, svg { display: block; max-width: 100%; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font-body);
+    font-size: 1rem;
+    line-height: 1.6;                 /* The 1.6 Leading Rule */
+    color: var(--color-ink);
+    background: var(--color-cream);   /* Paper-Not-White Rule */
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* ---- Layout shell ---------------------------------------- */
+  .wrap {
+    max-width: var(--width-max);
+    margin: 0 auto;
+    padding: 0 var(--spacing-lg);
+  }
+
+  section { padding: var(--spacing-2xl) 0; border-top: 1px solid var(--color-mist); }
+  section:first-of-type { border-top: none; }
+
+  .lede { max-width: 72ch; }
+
+  /* ---- Type scale ------------------------------------------ */
+  .display {
+    font-family: var(--font-display);
+    font-weight: 300;
+    font-style: italic;
+    font-size: clamp(2.5rem, 7vw, 4.5rem);
+    line-height: 1;
+    letter-spacing: -0.01em;
+  }
+  h2.headline {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    line-height: 1.2;
+    margin-bottom: var(--spacing-md);
+  }
+  h3.title {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(1.125rem, 2.5vw, 1.6rem);
+    line-height: 1.3;
+    margin-bottom: var(--spacing-sm);
+  }
+  h4.subtitle {
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 1.0625rem;
+    margin-bottom: var(--spacing-xs);
+  }
+  p { max-width: 72ch; }
+  p + p { margin-top: var(--spacing-sm); }
+
+  .label {
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .micro {
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--color-ash);
+  }
+  .mono { font-family: var(--font-mono); font-size: 0.8125rem; }
+  code, .code {
+    font-family: var(--font-mono);
+    font-size: 0.8125em;
+    background: var(--color-paper);
+    border: 1px solid var(--color-mist);
+    border-radius: 4px;
+    padding: 1px 6px;
+  }
+  .accent { color: var(--color-accent); }
+  em.voice { font-style: italic; color: var(--color-charcoal); }
+
+  /* ---- Header ---------------------------------------------- */
+  header.site {
+    position: sticky; top: 0; z-index: 20;
+    background: var(--color-cream);
+    border-bottom: 1px solid var(--color-mist);
+    height: 62px;
+    display: flex; align-items: center;
+  }
+  header.site .wrap { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+  .brand { display: flex; align-items: baseline; gap: 10px; }
+  .brand .mark { font-family: var(--font-display); font-style: italic; font-weight: 400; font-size: 1.25rem; }
+  .brand .kind { font-family: var(--font-mono); font-size: 0.6875rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-ash); }
+  nav.toc { display: flex; gap: var(--spacing-md); }
+  nav.toc a {
+    font-size: 0.85rem; font-weight: 500; color: var(--color-charcoal);
+    text-decoration: none; transition: color var(--duration-fast) linear;
+  }
+  nav.toc a:hover { color: var(--color-accent); }
+  @media (max-width: 880px) { nav.toc { display: none; } }
+
+  /* ---- Hero ------------------------------------------------ */
+  .hero { padding-top: var(--spacing-2xl); padding-bottom: var(--spacing-xl); }
+  .hero .kicker { color: var(--color-accent); margin-bottom: var(--spacing-md); }
+  .hero p.lead { font-size: 1.125rem; color: var(--color-charcoal); margin-top: var(--spacing-md); }
+
+  /* ---- Intent inversion ------------------------------------ */
+  .inversion {
+    display: grid; grid-template-columns: 1fr auto 1fr; gap: var(--spacing-lg);
+    align-items: stretch; margin-top: var(--spacing-lg);
+  }
+  @media (max-width: 760px) { .inversion { grid-template-columns: 1fr; } .inversion .arrow { transform: rotate(90deg); justify-self: center; } }
+  .panel {
+    background: var(--color-paper);
+    border: 1px solid var(--color-mist);
+    padding: var(--spacing-lg);
+  }
+  .panel.was { border-style: dashed; color: var(--color-ash); }
+  .panel.was h4 { color: var(--color-ash); }
+  .panel.now { border-color: var(--color-accent-veil); box-shadow: 0 20px 60px var(--color-accent-whisper); }
+  .panel ul { margin: var(--spacing-sm) 0 0; padding-left: 1.1em; }
+  .panel li { margin-bottom: 6px; font-size: 0.95rem; }
+  .panel.was li { text-decoration: line-through; text-decoration-color: var(--color-mist); }
+  .arrow { display: flex; align-items: center; font-family: var(--font-mono); font-size: 1.5rem; color: var(--color-accent); }
+
+  /* ---- Three framings (SEO / token / contract) ------------- */
+  .framings { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing-md); margin-top: var(--spacing-lg); }
+  @media (max-width: 760px) { .framings { grid-template-columns: 1fr; } }
+  .framings .f { padding: var(--spacing-md); border-top: 2px solid var(--color-ink); }
+  .framings .f.lead-f { border-top-color: var(--color-accent); }
+  .framings .f .n { font-family: var(--font-mono); font-size: 0.75rem; color: var(--color-ash); }
+  .framings .f h4 { margin-top: 6px; }
+
+  /* ---- Architecture map ------------------------------------ */
+  .map-note { color: var(--color-ash); font-size: 0.9rem; margin-bottom: var(--spacing-lg); }
+  .layers { display: flex; flex-direction: column; gap: var(--spacing-md); }
+  .layer {
+    background: var(--color-paper);
+    border: 1px solid var(--color-mist);
+    padding: var(--spacing-md) var(--spacing-lg);
+    display: grid; grid-template-columns: 200px 1fr; gap: var(--spacing-lg); align-items: center;
+  }
+  @media (max-width: 700px) { .layer { grid-template-columns: 1fr; gap: var(--spacing-xs); } }
+  .layer .lname { display: flex; flex-direction: column; gap: 4px; }
+  .layer .lname .tier { font-family: var(--font-mono); font-size: 0.7rem; color: var(--color-ash); letter-spacing: 0.08em; }
+  .layer .lname strong { font-family: var(--font-display); font-style: normal; font-weight: 500; font-size: 1.15rem; }
+  .layer .ldesc { font-size: 0.92rem; color: var(--color-charcoal); }
+  .layer .ldesc .stack { display: inline-block; margin-top: 6px; }
+  .layer.stage { background: var(--stage-dark); color: var(--stage-ink-inv); border-color: var(--stage-dark-deep); }
+  .layer.stage .lname strong { color: var(--stage-ink-inv); }
+  .layer.stage .ldesc { color: var(--stage-ink-dim); }
+  .layer.contract { border-color: var(--color-accent-veil); border-width: 1px; box-shadow: 0 20px 60px var(--color-accent-whisper); }
+  .flowdown { text-align: center; font-family: var(--font-mono); color: var(--color-accent); font-size: 1.1rem; line-height: 1; }
+  .edge {
+    display: block; margin-top: 6px; font-family: var(--font-mono);
+    font-size: 0.7rem; color: var(--color-ash); letter-spacing: 0.02em;
+  }
+  .edge b { color: var(--color-charcoal); font-weight: 500; }
+
+  /* ---- Pipeline (SVG-ish horizontal) ----------------------- */
+  .pipeline { margin-top: var(--spacing-xl); }
+  .pipe-track {
+    display: flex; align-items: stretch; gap: 0; overflow-x: auto;
+    border: 1px solid var(--color-mist); background: var(--color-paper);
+  }
+  .pstep {
+    flex: 1 0 auto; min-width: 120px; padding: var(--spacing-md) var(--spacing-sm);
+    text-align: center; border-right: 1px solid var(--color-mist); position: relative;
+  }
+  .pstep:last-child { border-right: none; }
+  .pstep .pn { font-family: var(--font-mono); font-size: 0.65rem; color: var(--color-ash); }
+  .pstep .pt { font-family: var(--font-display); font-style: normal; font-weight: 500; font-size: 1rem; margin-top: 4px; }
+  .pstep .pm { font-family: var(--font-mono); font-size: 0.65rem; color: var(--color-accent); margin-top: 6px; }
+  .pstep.terminal { background: var(--color-accent); }
+  .pstep.terminal .pn, .pstep.terminal .pt, .pstep.terminal .pm { color: var(--color-paper); }
+
+  /* ---- Spec seed: current vs target ------------------------ */
+  .cvt { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); margin-top: var(--spacing-md); }
+  @media (max-width: 760px) { .cvt { grid-template-columns: 1fr; } }
+  .cvt .col { padding: var(--spacing-md); background: var(--color-paper); border: 1px solid var(--color-mist); }
+  .cvt .col.now { border-top: 2px solid var(--color-ash); }
+  .cvt .col.target { border-top: 2px solid var(--color-accent); }
+  .cvt ul { margin: var(--spacing-sm) 0 0; padding-left: 1.1em; }
+  .cvt li { margin-bottom: 8px; font-size: 0.93rem; }
+
+  /* ---- Tables ---------------------------------------------- */
+  table { width: 100%; border-collapse: collapse; margin-top: var(--spacing-md); font-size: 0.9rem; }
+  caption { text-align: left; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--color-mist); vertical-align: top; }
+  thead th { font-family: var(--font-body); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-ash); border-bottom: 1px solid var(--color-ink); }
+  tbody tr:hover { background: var(--color-cream); }
+  td .ref { font-family: var(--font-mono); font-size: 0.78rem; color: var(--color-accent); white-space: nowrap; }
+  td .verb { font-family: var(--font-mono); font-size: 0.78rem; font-weight: 500; }
+
+  /* endpoint list */
+  .endpoints { font-family: var(--font-mono); font-size: 0.82rem; background: var(--color-paper); border: 1px solid var(--color-mist); padding: var(--spacing-md) var(--spacing-lg); margin-top: var(--spacing-md); overflow-x: auto; }
+  .endpoints .row { display: grid; grid-template-columns: 64px minmax(280px, 1fr) auto; gap: var(--spacing-sm); padding: 4px 0; align-items: baseline; }
+  .endpoints .m { font-weight: 500; }
+  .endpoints .m.post { color: var(--color-accent); }
+  .endpoints .m.get { color: var(--color-charcoal); }
+  .endpoints .path { color: var(--color-ink); }
+  .endpoints .ret { color: var(--color-ash); font-size: 0.72rem; }
+  .endpoints .drop { color: var(--color-ash); border-top: 1px dashed var(--color-mist); margin-top: 8px; padding-top: 8px; display: block; }
+
+  /* ---- Gates G1–G7 ----------------------------------------- */
+  .gates { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--spacing-sm); margin-top: var(--spacing-md); }
+  @media (max-width: 700px) { .gates { grid-template-columns: 1fr; } }
+  .gate { display: grid; grid-template-columns: 48px 1fr; gap: var(--spacing-sm); padding: var(--spacing-sm); background: var(--color-paper); border: 1px solid var(--color-mist); align-items: start; }
+  .gate .gid { font-family: var(--font-mono); font-weight: 500; font-size: 1rem; color: var(--color-accent); }
+  .gate .gtxt { font-size: 0.88rem; }
+  .gate .gtxt strong { font-weight: 600; }
+
+  /* ---- Package contract tree ------------------------------- */
+  .contract-grid { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: var(--spacing-xl); margin-top: var(--spacing-md); align-items: start; }
+  @media (max-width: 820px) { .contract-grid { grid-template-columns: 1fr; } }
+  .tree { font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.9; background: var(--color-paper); color: var(--color-ink); padding: var(--spacing-md) var(--spacing-lg); border: 1px solid var(--color-mist); white-space: pre; overflow-x: auto; }
+  .tree .dir { color: var(--color-charcoal); }
+  .tree .file { color: var(--color-ink); }
+  .tree .cm { color: var(--color-ash); }
+  .tree .star { color: var(--color-accent); }
+  .zones { display: grid; gap: var(--spacing-md); }
+  .zone { padding: var(--spacing-md); background: var(--color-paper); border: 1px solid var(--color-mist); }
+  .zone.locked { border-top: 2px solid var(--color-ink); }
+  .zone.safe { border-top: 2px solid var(--color-accent); }
+  .zone h4 { display: flex; align-items: center; gap: 8px; }
+  .zone .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: var(--spacing-sm); }
+  .chip { font-family: var(--font-mono); font-size: 0.72rem; padding: 4px 10px; border-radius: 4px; border: 1px solid var(--color-mist); background: var(--color-cream); }
+  .zone.safe .chip { border-color: var(--color-accent-veil); }
+
+  /* ---- Budget meter ---------------------------------------- */
+  .budget { margin-top: var(--spacing-md); padding: var(--spacing-lg); background: var(--color-paper); border: 1px solid var(--color-mist); }
+  .meter-controls { display: flex; flex-wrap: wrap; gap: var(--spacing-lg); align-items: flex-end; margin-bottom: var(--spacing-lg); }
+  .ctl { display: flex; flex-direction: column; gap: 6px; }
+  .ctl label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-ash); font-weight: 500; }
+  .ctl input[type=range] { width: 220px; accent-color: var(--color-accent); }
+  .ctl .val { font-family: var(--font-mono); font-size: 0.95rem; }
+  .ctl .val b { color: var(--color-accent); }
+  .meter-bar { height: 18px; background: var(--color-cream); border: 1px solid var(--color-mist); position: relative; overflow: hidden; }
+  .meter-fill { height: 100%; width: 0%; background: var(--color-accent); transition: width var(--duration-base) var(--ease-out), background var(--duration-base) linear; }
+  .meter-zones { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 0.68rem; color: var(--color-ash); margin-top: 6px; }
+  .readout { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing-md); margin-top: var(--spacing-lg); }
+  @media (max-width: 600px) { .readout { grid-template-columns: 1fr; } .ctl input[type=range] { width: 100%; } }
+  .readout .r { border-top: 1px solid var(--color-mist); padding-top: 10px; }
+  .readout .r .rk { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-ash); }
+  .readout .r .rv { font-family: var(--font-mono); font-size: 1.5rem; margin-top: 4px; }
+  .readout .r .rv.warn { color: var(--color-accent); }
+  #verdict { margin-top: var(--spacing-md); font-size: 0.95rem; }
+  #verdict .ok { color: var(--color-charcoal); }
+  #verdict .over { color: var(--color-accent); font-weight: 500; }
+
+  /* ---- Build sequence -------------------------------------- */
+  .steps { margin-top: var(--spacing-md); display: grid; gap: 2px; }
+  .step { display: grid; grid-template-columns: 56px 1fr; gap: var(--spacing-md); padding: var(--spacing-sm) 0; border-bottom: 1px solid var(--color-mist); align-items: baseline; }
+  .step .sn { font-family: var(--font-mono); font-size: 1rem; color: var(--color-ash); }
+  .step.zero .sn { color: var(--color-accent); }
+  .step .sb strong { font-weight: 600; }
+  .step .sb span { color: var(--color-charcoal); font-size: 0.92rem; }
+
+  /* ---- Non-goals ------------------------------------------- */
+  .nogoals { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--spacing-sm); margin-top: var(--spacing-md); }
+  @media (max-width: 700px) { .nogoals { grid-template-columns: 1fr; } }
+  .ng { padding: var(--spacing-sm) var(--spacing-md); border: 1px solid var(--color-mist); background: var(--color-paper); font-size: 0.92rem; }
+  .ng .x { color: var(--color-accent); font-family: var(--font-mono); margin-right: 8px; }
+
+  /* ---- Footer ---------------------------------------------- */
+  footer { padding: var(--spacing-2xl) 0 var(--spacing-xl); border-top: 1px solid var(--color-mist); color: var(--color-ash); font-size: 0.85rem; }
+  footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--spacing-md); }
+  footer a { color: var(--color-charcoal); }
+
+  /* Section eyebrow */
+  .eyebrow { color: var(--color-accent); margin-bottom: var(--spacing-sm); }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<!-- INTENT: This playground informs the foundational build decision for seo-video-slicer:
+     "what is the product, and what is the pipeline that produces it?" The decision it encodes
+     is the INVERSION — the optimized WebP animation PACKAGE is the product, not an in-app
+     animation generator. The anti-pattern it prevents: asking a frontier model to GENERATE
+     hero-animation imagery from scratch (slow, non-deterministic, massive token/credit burn).
+     Instead we ship a tiny, Core-Web-Vitals-friendly WebP frame sequence + a working reference
+     player so a downstream model integrates premium motion in one pass at near-zero image
+     tokens. It also fences off the smart-image-animations studio bloat (§2 non-goals) and the
+     stale source context that must NOT be ported (§10.1). Source of truth: docs/specs/seo-video-slicer-spec.md. -->
+
+<header class="site">
+  <div class="wrap">
+    <div class="brand">
+      <span class="mark">SEO Video Slicer</span>
+      <span class="kind">Architecture · Spec Seed</span>
+    </div>
+    <nav class="toc">
+      <a href="#intent">Intent</a>
+      <a href="#map">Architecture</a>
+      <a href="#contract">Package Contract</a>
+      <a href="#seed">Spec Seed</a>
+      <a href="#budget">Duration Policy</a>
+      <a href="#anchors">Source Anchors</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============================ HERO ============================ -->
+  <section class="hero" id="top">
+    <p class="label kicker">Foundational planning artifact · v1 pre-implementation</p>
+    <h1 class="display">The package is<br>the product.</h1>
+    <p class="lead lede">
+      A premium, single-purpose video slicer that turns a 5&ndash;10s clip from <em class="voice">any</em>
+      source into a drop-in WebP <strong>animation package</strong> &mdash; frames, a working
+      self-contained scroll player, a manifest, and an offline verify gate &mdash; that a frontier
+      model wires into any repo at near-zero image-generation token burn.
+    </p>
+  </section>
+
+  <!-- ============================ INTENT ============================ -->
+  <section id="intent">
+    <p class="label eyebrow">Intent · the inversion</p>
+    <h2 class="headline">We invert <em class="voice">smart-image-animations</em>.</h2>
+    <p class="lede">
+      The source repo made <em class="voice">animation templates</em> the product and grew a studio
+      around them (GSAP generator, MLX/Gemma chat, a multi-project dashboard). We invert it: the
+      optimized, sliced-image <strong>package</strong> is the product. We do not generate the
+      animation. The downstream repo&rsquo;s frontier model already &ldquo;does the backend&rdquo; &mdash;
+      it just needs premium raw material.
+    </p>
+
+    <div class="inversion">
+      <div class="panel was">
+        <h4 class="subtitle">Source &mdash; studio as product</h4>
+        <ul>
+          <li>In-app GSAP / ScrollTrigger generator</li>
+          <li>MLX / Gemma local model runtime</li>
+          <li>Chat &ldquo;Animation Director&rdquo;</li>
+          <li>Multi-project dashboard &amp; gallery</li>
+          <li>Animation templates shipped as the deliverable</li>
+        </ul>
+      </div>
+      <div class="arrow" aria-hidden="true">&rarr;</div>
+      <div class="panel now">
+        <h4 class="subtitle">This repo &mdash; package as product</h4>
+        <ul>
+          <li>One deterministic reference <code>index.html</code> player</li>
+          <li>No local LLM; ffmpeg + OpenCV + neural erase only</li>
+          <li>The exported folder is the entire deliverable</li>
+          <li>One session = one working clip (minimal recents)</li>
+          <li>Customization is the <em class="voice">downstream</em> model&rsquo;s job</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="framings">
+      <div class="f lead-f">
+        <div class="n">01 / token burn</div>
+        <h4 class="subtitle">Eliminate generation cost</h4>
+        <p>Asking a model to <em class="voice">create</em> hero imagery from scratch is slow,
+        expensive, and non-deterministic. A tiny WebP frame sequence + a working player means
+        near-zero tokens and enterprise motion on the first try.</p>
+      </div>
+      <div class="f">
+        <div class="n">02 / SEO &amp; CWV</div>
+        <h4 class="subtitle">Engineered for Core Web Vitals</h4>
+        <p>WebP frame sequences are LCP-safe, lazy-loadable, CLS-free, and a fraction of the weight
+        of shipping video or a heavy JS animation library. The package <em class="voice">helps</em>
+        CWV, never hurts it.</p>
+      </div>
+      <div class="f">
+        <div class="n">03 / one-pass integration</div>
+        <h4 class="subtitle">Drop in &amp; ship</h4>
+        <p>Copy the folder to <code>public/</code>, open <code>index.html</code>, see premier scroll
+        animation in 10 seconds, then tell the model &ldquo;use this&rdquo; &mdash; integration in a
+        single pass. Five stars is the bar; anything that reads as a template fails.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ ARCHITECTURE MAP ============================ -->
+  <section id="map">
+    <p class="label eyebrow">Architecture map</p>
+    <h2 class="headline">Layers &amp; the source of truth on every edge.</h2>
+    <p class="map-note lede">
+      One FastAPI process serves a built Vite/React UI. Read top-to-bottom as request flow;
+      each <span class="mono">edge</span> line names <strong>who calls whom</strong>, so no diagram
+      arrow is unsourced. Everything is built to satisfy the Package Contract (the terminal layer).
+    </p>
+
+    <div class="layers">
+
+      <div class="layer">
+        <div class="lname">
+          <span class="tier">L1 · client</span>
+          <strong>UI &mdash; Vite + React + TS</strong>
+        </div>
+        <div class="ldesc">
+          Single-page slicer. Impeccable system on all <strong>chrome</strong> (header, controls,
+          trim, filmstrip, export flow, recents). Built to static assets, served by FastAPI &mdash;
+          no Next.js, one runtime process.
+          <span class="edge">edge &middot; <b>UI &rarr; API</b> over <code>fetch</code> to the §9 endpoint set · source: spec §4, §9</span>
+        </div>
+      </div>
+
+      <div class="flowdown" aria-hidden="true">&darr;&nbsp;&nbsp;HTTP (localhost / tailnet / LAN)</div>
+
+      <div class="layer stage">
+        <div class="lname">
+          <span class="tier">L1b · media stage</span>
+          <strong>Dark Preview Surface</strong>
+        </div>
+        <div class="ldesc">
+          The video preview, filmstrip, and lightbox sit on a neutral-dark surface
+          (<span class="mono">oklch(20% 0 0)</span>) so extracted frames grade true &mdash; the
+          pro-tool standard. Still &ldquo;the Impeccable design,&rdquo; using its dark-surface tokens
+          where frame fidelity demands it.
+          <span class="edge">edge &middot; <b>render-only</b> · consumes frame URLs from <code>GET /data/...</code> · source: spec §7</span>
+        </div>
+      </div>
+
+      <div class="flowdown" aria-hidden="true">&darr;</div>
+
+      <div class="layer">
+        <div class="lname">
+          <span class="tier">L2 · server</span>
+          <strong>API &mdash; FastAPI</strong>
+        </div>
+        <div class="ldesc">
+          Single Python process. Owns job state, upload, slice preview/finalize, crop, erase, WebP,
+          rename, package, share status, and static serving. ~4 lean modules. No MLX.
+          <span class="edge">edge &middot; <b>API &rarr; Slicing/Media</b> by direct call · <b>API &rarr; Packager</b> on <code>/package</code> · source: spec §4, §9</span>
+        </div>
+      </div>
+
+      <div class="flowdown" aria-hidden="true">&darr;</div>
+
+      <div class="layer">
+        <div class="lname">
+          <span class="tier">L3 · media ops</span>
+          <strong>Slicing / Media</strong>
+        </div>
+        <div class="ldesc">
+          <strong>ffmpeg</strong> (extract / trim / cropdetect / delogo), <strong>OpenCV</strong>
+          (auto-crop contour + watermark-symmetry enforcer), <strong>Pillow</strong> (WebP q82&ndash;90,
+          zero-pad). JPEG <em class="voice">preview</em> frames &rarr; WebP <em class="voice">package</em>
+          frames; one format per stage.
+          <span class="edge">edge &middot; <b>API owns invocation</b>; this layer is pure functions over files · source: spec §5, cherry-pick §10</span>
+        </div>
+      </div>
+
+      <div class="flowdown" aria-hidden="true">&darr;</div>
+
+      <div class="layer">
+        <div class="lname">
+          <span class="tier">L4 · erase</span>
+          <strong>Premium Erase &mdash; two tier</strong>
+        </div>
+        <div class="ldesc">
+          <strong>Premium:</strong> LaMa via IOPaint (local MPS/CPU, model auto-downloaded ~200MB) +
+          feathered mask edges + temporal consistency. <strong>Baseline fallback:</strong> enhanced
+          OpenCV <code>INPAINT_NS</code>, no torch, always available. Tier auto-selected; UI labels
+          which ran.
+          <span class="edge">edge &middot; <b>API &rarr; Erase</b> on <code>/erase</code>, returns <code>tier_used</code> · selection: IOPaint importable ? premium : baseline · source: spec §6</span>
+        </div>
+      </div>
+
+      <div class="flowdown" aria-hidden="true">&darr;</div>
+
+      <div class="layer">
+        <div class="lname">
+          <span class="tier">L5 · assemble</span>
+          <strong>Packager</strong>
+        </div>
+        <div class="ldesc">
+          Assembles the §8 contract: copies frames, rewrites paths to relative
+          <code>./frames/...</code> by construction, emits <code>manifest.json</code> + fingerprint,
+          renders the one reference <code>index.html</code>, writes README / optional PROMPT.md,
+          runs <code>verify.mjs</code>, then zips.
+          <span class="edge">edge &middot; <b>Packager runs verify.mjs and gates the result</b>; export fails on non-zero exit · source: spec §8, §11.4</span>
+        </div>
+      </div>
+
+      <div class="flowdown" aria-hidden="true">&darr;</div>
+
+      <div class="layer contract">
+        <div class="lname">
+          <span class="tier">L6 · deliverable</span>
+          <strong class="accent">Package Contract</strong>
+        </div>
+        <div class="ldesc">
+          The product. A self-contained folder: zero external requests, relative paths, works
+          offline, opens &amp; animates now. <strong>Everything above is built to make this pass
+          <code>verify.mjs</code> G1&ndash;G7.</strong>
+          <span class="edge">edge &middot; <b>consumed by the downstream repo&rsquo;s frontier model</b> · contract is the source of truth · source: spec §8</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Pipeline strip -->
+    <div class="pipeline">
+      <p class="label" style="margin-bottom: var(--spacing-sm);">Pipeline &mdash; one clip, end to end</p>
+      <div class="pipe-track">
+        <div class="pstep">
+          <div class="pn">in</div>
+          <div class="pt">Video</div>
+          <div class="pm">POST /upload</div>
+        </div>
+        <div class="pstep">
+          <div class="pn">01</div>
+          <div class="pt">Trim</div>
+          <div class="pm">in/out · 10s default</div>
+        </div>
+        <div class="pstep">
+          <div class="pn">02</div>
+          <div class="pt">Frames</div>
+          <div class="pm">ffmpeg fps · JPEG</div>
+        </div>
+        <div class="pstep">
+          <div class="pn">03</div>
+          <div class="pt">Crop / Erase</div>
+          <div class="pm">OpenCV · LaMa</div>
+        </div>
+        <div class="pstep">
+          <div class="pn">04</div>
+          <div class="pt">WebP</div>
+          <div class="pm">q82&ndash;90 · zero-pad</div>
+        </div>
+        <div class="pstep terminal">
+          <div class="pn">out</div>
+          <div class="pt">Package</div>
+          <div class="pm">verify.mjs &middot; zip</div>
+        </div>
+      </div>
+      <p class="micro" style="margin-top: var(--spacing-sm);">
+        video &rarr; trim &rarr; frames &rarr; crop/erase/webp &rarr; package &mdash; the only path; there is no studio branch.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================ PACKAGE CONTRACT ============================ -->
+  <section id="contract">
+    <p class="label eyebrow">The package contract · define this FIRST (§8)</p>
+    <h2 class="headline">The exported folder, visualized.</h2>
+    <p class="lede">
+      Self-contained, zero external requests, relative paths, works offline. The lean §8 contract &mdash;
+      <em class="voice">not</em> the source&rsquo;s multi-doc package ceremony. We take the verify.mjs +
+      fingerprint pattern, not the doc pile.
+    </p>
+
+    <div class="contract-grid">
+      <div class="tree" aria-label="package folder tree"><span class="dir">&lt;slug&gt;-animation/</span>
+<span class="dir">├── frames/</span>
+│   ├── <span class="file">frame_000.webp</span>          <span class="cm"># zero-padded, sortable</span>
+│   ├── <span class="file">frame_001.webp</span>
+│   └── <span class="file">… frame_NNN.webp</span>       <span class="cm"># 20–80, q82–90</span>
+├── <span class="file">index.html</span>                  <span class="cm"># self-contained player</span>
+├── <span class="file">manifest.json</span>               <span class="cm"># locked vs safe zones</span>
+├── <span class="file">verify.mjs</span>                  <span class="cm"># offline gate · zero deps</span>
+├── <span class="file">README.md</span>                   <span class="cm"># ≤200 lines · 3 recipes</span>
+└── <span class="file">PROMPT.md</span>  <span class="star">(optional)</span>       <span class="cm"># drop-in LLM instructions</span></div>
+
+      <div class="zones">
+        <div class="zone locked">
+          <h4 class="subtitle">manifest.json &middot; <span class="accent">locked_zones</span></h4>
+          <p style="font-size: 0.88rem; color: var(--color-charcoal);">
+            The integrity of the package. A downstream model must <strong>not</strong> touch these
+            &mdash; do not regenerate the images.
+          </p>
+          <div class="chips">
+            <span class="chip">frames/*.webp bytes</span>
+            <span class="chip">frame_NNN zero-pad ordering</span>
+            <span class="chip">cover-fit single-canvas render</span>
+            <span class="chip">reduced-motion fallback</span>
+          </div>
+        </div>
+        <div class="zone safe">
+          <h4 class="subtitle">manifest.json &middot; <span class="accent">safe_zones</span></h4>
+          <p style="font-size: 0.88rem; color: var(--color-charcoal);">
+            The customization surface. A model is free to adapt these to its host repo without
+            breaking the contract.
+          </p>
+          <div class="chips">
+            <span class="chip">accent color</span>
+            <span class="chip">headline / overlay copy</span>
+            <span class="chip">scroll distance</span>
+            <span class="chip">easing</span>
+            <span class="chip">container height</span>
+            <span class="chip">framework wrapper</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="title" style="margin-top: var(--spacing-xl);">index.html &mdash; locked player techniques</h3>
+    <p class="lede" style="font-size: 0.92rem;">
+      Distilled to <em class="voice">one</em> deterministic player (cherry-picked from the source
+      <code>apple_scroll_zoom</code> template, GSAP-studio metadata stripped):
+    </p>
+    <ul class="lede" style="margin-top: var(--spacing-sm); padding-left: 1.2em; font-size: 0.92rem;">
+      <li>Single <code>&lt;canvas&gt;</code>, cover-fit render
+        (<span class="mono">scale = max(cw/iw, ch/ih)</span>, centered) &mdash; no duplicate blurred background layer.</li>
+      <li>DPR scaling for retina sharpness.</li>
+      <li>Parallel preload with an <code>onerror</code>-tolerant counter &mdash; a 404 never freezes playback.</li>
+      <li>Frame index = scroll progress &times; (frameCount &minus; 1); a no-dependency rAF fallback is preferred for true zero-external-requests (GSAP from cdnjs is the <em class="voice">only</em> permitted external request).</li>
+      <li><code>prefers-reduced-motion: reduce</code> &rarr; static hero frame; brand still reads. System fonts only; inline CSS/JS; opens with no server.</li>
+    </ul>
+  </section>
+
+  <!-- ============================ SPEC SEED ============================ -->
+  <section id="seed">
+    <p class="label eyebrow">Spec seed · this section can become a reviewable spec</p>
+    <h2 class="headline">Current vs. target, boundaries, interfaces, sequence, gates.</h2>
+
+    <h3 class="title">Current vs. target behavior</h3>
+    <div class="cvt">
+      <div class="col now">
+        <p class="micro">Current &mdash; smart-image-animations studio</p>
+        <ul>
+          <li>Studio generates GSAP/ScrollTrigger animations in-app.</li>
+          <li>MLX/Gemma model server + chat Animation Director.</li>
+          <li>Multi-project dashboard / job gallery is a product surface.</li>
+          <li>Erase = <code>cv2.inpaint(INPAINT_TELEA)</code> per frame: smears, no feather, no temporal coherence.</li>
+          <li>Hardcoded <code>if (end - start) &gt; 10.0</code> duration wall.</li>
+          <li>4-format frame sprawl checked everywhere; gold-standard multi-doc package ceremony.</li>
+          <li>Dark Void-Black / Electric-Blue brand; Next.js route tree.</li>
+        </ul>
+      </div>
+      <div class="col target">
+        <p class="micro">Target &mdash; this lean slicer</p>
+        <ul>
+          <li>No in-app generator. ONE deterministic reference player ships in the package.</li>
+          <li>No local LLM. ffmpeg + OpenCV + optional neural erase only.</li>
+          <li>One session = one working clip; a minimal recents list, not a CRM.</li>
+          <li>Two-tier erase: LaMa/IOPaint premium + enhanced OpenCV <code>INPAINT_NS</code> fallback, both with temporal coherence.</li>
+          <li><code>MAX_SLICE_SECONDS=60</code> constant + frame-budget meter as the real governor.</li>
+          <li>JPEG preview &rarr; WebP package, one format per stage; lean §8 contract.</li>
+          <li>Impeccable light editorial chrome + neutral-dark media stage; single-page Vite/React.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 class="title" style="margin-top: var(--spacing-xl);">Ownership boundaries</h3>
+    <table>
+      <thead><tr><th>Owns</th><th>Responsibility</th><th>Does NOT own</th></tr></thead>
+      <tbody>
+        <tr><td><strong>UI (Vite/React)</strong></td><td>Trim/fps selection, frame exclude toggles, crop box, erase region paint, budget projection, export trigger, share URLs surface.</td><td>Media decoding, file layout, the contract.</td></tr>
+        <tr><td><strong>API (FastAPI)</strong></td><td>Job state, request routing, invoking media ops, gating export on verify.mjs, static serving.</td><td>Animation generation, model inference, the player&rsquo;s runtime behavior.</td></tr>
+        <tr><td><strong>Slicing/Media</strong></td><td>Frame extraction, deterministic auto-crop + watermark enforcer, WebP, zero-pad rename. Pure functions over files.</td><td>Erase tier selection, packaging, HTTP.</td></tr>
+        <tr><td><strong>Premium Erase</strong></td><td>Tier auto-selection, masked inpaint, feather + temporal coherence pass, reporting <code>tier_used</code>.</td><td>Crop geometry, WebP encoding.</td></tr>
+        <tr><td><strong>Packager</strong></td><td>Contract assembly, relative-path construction, manifest + fingerprint, player render, README/PROMPT, run + gate on verify.mjs, zip.</td><td>Slicing math, erase quality.</td></tr>
+        <tr><td><strong>Package Contract</strong></td><td>The source of truth for what the deliverable is. Locked vs safe zones; what the downstream model may change.</td><td>How the package was produced.</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="title" style="margin-top: var(--spacing-xl);">Public interfaces &mdash; the lean endpoint set (§9)</h3>
+    <div class="endpoints" aria-label="backend endpoint list">
+      <div class="row"><span class="m post">POST</span><span class="path">/upload</span><span class="ret">&rarr; { id, ... } (+ thumbnail)</span></div>
+      <div class="row"><span class="m get">GET</span><span class="path">/jobs/{id}</span><span class="ret">&rarr; job meta</span></div>
+      <div class="row"><span class="m post">POST</span><span class="path">/jobs/{id}/slice/preview</span><span class="ret">{start,end,fps} &rarr; {preview_id, frames}</span></div>
+      <div class="row"><span class="m post">POST</span><span class="path">/jobs/{id}/slice/finalize</span><span class="ret">{preview_id, selected} &rarr; {slice_id, frames}</span></div>
+      <div class="row"><span class="m post">POST</span><span class="path">/jobs/{id}/slices/{sid}/crop</span><span class="ret">{manual_crop | auto} &rarr; crop applied</span></div>
+      <div class="row"><span class="m post">POST</span><span class="path">/jobs/{id}/slices/{sid}/erase</span><span class="ret">{x,y,w,h, tier?} &rarr; {tier_used, erased} · PREMIUM</span></div>
+      <div class="row"><span class="m post">POST</span><span class="path">/jobs/{id}/slices/{sid}/webp</span><span class="ret">&rarr; frames converted</span></div>
+      <div class="row"><span class="m post">POST</span><span class="path">/jobs/{id}/slices/{sid}/rename</span><span class="ret">{prefix} &rarr; renamed</span></div>
+      <div class="row"><span class="m post">POST</span><span class="path">/jobs/{id}/slices/{sid}/package</span><span class="ret">{slug, accent?, copy?} &rarr; builds + zips, runs verify.mjs</span></div>
+      <div class="row"><span class="m get">GET</span><span class="path">/jobs/{id}/slices/{sid}/package/download</span><span class="ret">&rarr; package.zip</span></div>
+      <div class="row"><span class="m get">GET</span><span class="path">/share/status</span><span class="ret">&rarr; { local, tailscale, lan }</span></div>
+      <div class="row"><span class="m get">GET</span><span class="path">/data/...</span><span class="ret">&rarr; static frame serving</span></div>
+      <span class="drop">DROP from source: all <code>/ai/*</code>, <code>/experiences/*</code> generation, <code>/context/*</code>, model selection.</span>
+    </div>
+
+    <h3 class="title" style="margin-top: var(--spacing-xl);">Data flow</h3>
+    <p class="lede" style="font-size: 0.93rem;">
+      <code>video</code> (POST /upload, thumbnail) &rarr; <code>trim</code> (in/out, default 10s, budget-governed)
+      &rarr; <code>frames</code> (ffmpeg fps &rarr; JPEG preview) &rarr; <code>review</code> (filmstrip exclude, finalize)
+      &rarr; <code>crop</code> (manual or OpenCV auto + watermark enforcer) &rarr; <code>erase</code> (two-tier inpaint,
+      temporal coherence) &rarr; <code>webp</code> (q82&ndash;90, zero-pad) &rarr; <code>rename</code> (SEO prefix)
+      &rarr; <code>package</code> (assemble + manifest + verify.mjs gate + zip) &rarr; <code>download</code> + share URLs.
+      A single linear path: no studio branch, no model round-trip.
+    </p>
+
+    <h3 class="title" style="margin-top: var(--spacing-xl);">Build sequence &mdash; contract-first (§11)</h3>
+    <div class="steps">
+      <div class="step zero"><span class="sn">0</span><div class="sb"><strong>Contract.</strong> <span>Write the manifest schema + verify.mjs gates + the reference index.html player; lock them. Everything else builds to pass verify.mjs.</span></div></div>
+      <div class="step"><span class="sn">1</span><div class="sb"><strong>Backend core.</strong> <span>FastAPI skeleton, upload, slice preview/finalize, static serving (TDD against ffmpeg).</span></div></div>
+      <div class="step"><span class="sn">2</span><div class="sb"><strong>Slicing ops.</strong> <span>Crop (+ watermark enforcer), WebP, rename.</span></div></div>
+      <div class="step"><span class="sn">3</span><div class="sb"><strong>Premium erase.</strong> <span>Two-tier engine + selection + temporal coherence.</span></div></div>
+      <div class="step"><span class="sn">4</span><div class="sb"><strong>Packager.</strong> <span>Build contract package, portable paths, zip, run verify.mjs, expose download.</span></div></div>
+      <div class="step"><span class="sn">5</span><div class="sb"><strong>Design port.</strong> <span>Copy Impeccable skill + tokens; author PRODUCT.md / DESIGN.md fresh (not cherry-picked).</span></div></div>
+      <div class="step"><span class="sn">6</span><div class="sb"><strong>Frontend.</strong> <span>Vite/React Impeccable chrome + dark media stage; wire all endpoints; lightbox.</span></div></div>
+      <div class="step"><span class="sn">7</span><div class="sb"><strong>Share.</strong> <span>local / Tailscale / LAN URL surfacing; launcher.</span></div></div>
+      <div class="step"><span class="sn">8</span><div class="sb"><strong>Polish &amp; gate.</strong> <span>/impeccable audit, npx impeccable detect, end-to-end: real video &rarr; package &rarr; opens &amp; animates &rarr; verify.mjs green.</span></div></div>
+      <div class="step"><span class="sn">9</span><div class="sb"><strong>OSS readiness.</strong> <span>README (token-burn + SEO/CWV pitch), permissive LICENSE, examples, sample package, CI running verify.mjs.</span></div></div>
+    </div>
+
+    <h3 class="title" style="margin-top: var(--spacing-xl);">Acceptance tests &mdash; verify.mjs gates G1&ndash;G7 (§8)</h3>
+    <p class="lede" style="font-size: 0.92rem;"><code>node verify.mjs</code> exits non-zero on any failed gate. The export pipeline runs it before declaring success.</p>
+    <div class="gates">
+      <div class="gate"><span class="gid">G1</span><span class="gtxt"><strong>Asset closure.</strong> Every frame referenced by index.html exists in frames/.</span></div>
+      <div class="gate"><span class="gid">G2</span><span class="gtxt"><strong>Contiguity.</strong> Frames are zero-padded, contiguous frame_000&hellip;frame_NNN; count matches manifest.frames.count.</span></div>
+      <div class="gate"><span class="gid">G3</span><span class="gtxt"><strong>Self-contained.</strong> No <code>http(s)://…/&lt;local-asset&gt;</code> leaks, no scratch/localhost paths; relative <code>./frames/…</code> only.</span></div>
+      <div class="gate"><span class="gid">G4</span><span class="gtxt"><strong>Technique check.</strong> index.html contains cover-fit render, DPR scaling, preload-with-onerror, and a prefers-reduced-motion block.</span></div>
+      <div class="gate"><span class="gid">G5</span><span class="gtxt"><strong>Manifest integrity.</strong> manifest.json parses, has schema + fingerprint; fingerprint matches recomputed value.</span></div>
+      <div class="gate"><span class="gid">G6</span><span class="gtxt"><strong>Docs.</strong> README.md exists, ≤200 lines, has Iframe / React / Vanilla headings. PROMPT.md optional.</span></div>
+      <div class="gate"><span class="gid">G7</span><span class="gtxt"><strong>Weight budget.</strong> Total package within budget; each WebP within per-frame budget (flag oversized). The backstop that keeps any duration honest.</span></div>
+    </div>
+
+    <h3 class="title" style="margin-top: var(--spacing-xl);">Non-goals &mdash; the bloat deliberately cut (§2)</h3>
+    <div class="nogoals">
+      <div class="ng"><span class="x">&times;</span>In-app GSAP / ScrollTrigger animation generator (the Studio tab).</div>
+      <div class="ng"><span class="x">&times;</span>MLX / Gemma local runtime. No local LLM, no model download for core function.</div>
+      <div class="ng"><span class="x">&times;</span>Chat assistant / Animation Director.</div>
+      <div class="ng"><span class="x">&times;</span>Multi-project dashboard / job gallery as a product surface.</div>
+      <div class="ng"><span class="x">&times;</span>Benchmark harnesses, prompt-expansion, style-context galleries, &ldquo;experiences&rdquo; CRUD.</div>
+      <div class="ng"><span class="x">&times;</span>If it&rsquo;s not in service of <em class="voice">slice &rarr; clean frames &rarr; premium package</em>, it&rsquo;s out.</div>
+    </div>
+  </section>
+
+  <!-- ============================ DURATION POLICY ============================ -->
+  <section id="budget">
+    <p class="label eyebrow">Duration &amp; frame-budget policy (§5.1)</p>
+    <h2 class="headline">Seconds are configurable. Frame weight is the governor.</h2>
+    <p class="lede">
+      Default <code>DEFAULT_SLICE_SECONDS = 10</code> (the hero sweet spot, auto-applied on import).
+      Ceiling <code>MAX_SLICE_SECONDS = 60</code> is a <strong>single config constant</strong> (backend env
+      + frontend mirror) &mdash; raising it later is a one-line change; never hardcode 10/60 elsewhere.
+      The real safety rail is the <strong>frame-budget meter</strong>: it projects live frame count and
+      package weight, and auto-suggests a lower fps as duration rises. <code>verify.mjs</code> G7 is the
+      backstop that keeps any chosen duration honest to the 5-star CWV bar.
+    </p>
+
+    <div class="budget">
+      <div class="meter-controls">
+        <div class="ctl">
+          <label for="dur">Duration</label>
+          <input type="range" id="dur" min="1" max="60" value="10" step="1">
+          <span class="val"><b id="durV">10</b> s &middot; <span class="mono" style="color: var(--color-ash);">max 60</span></span>
+        </div>
+        <div class="ctl">
+          <label for="fps">Effective fps</label>
+          <input type="range" id="fps" min="2" max="16" value="12" step="1">
+          <span class="val"><b id="fpsV">12</b> fps</span>
+        </div>
+      </div>
+
+      <div class="meter-bar"><div class="meter-fill" id="fill"></div></div>
+      <div class="meter-zones">
+        <span>0</span>
+        <span>20 &mdash; hero/loop lane</span>
+        <span>80</span>
+        <span>scrollytelling &rarr; ~200</span>
+      </div>
+
+      <div class="readout">
+        <div class="r"><div class="rk">Projected frames</div><div class="rv" id="frames">120</div></div>
+        <div class="r"><div class="rk">Est. package weight</div><div class="rv" id="weight">4.8 MB</div></div>
+        <div class="r"><div class="rk">Lane</div><div class="rv" id="lane" style="font-size: 1rem; padding-top: 12px;">scrollytelling</div></div>
+      </div>
+
+      <p id="verdict"></p>
+      <p class="micro" style="margin-top: var(--spacing-md);">
+        Why not just allow 60s at any fps: 60s &times; 12fps &asymp; 720 frames &asymp; ~29 MB destroys the
+        lazy-loadable/LCP-safe promise. 60s &times; 2fps &asymp; 120 frames is fine. The meter enforces the
+        contract regardless of the duration chosen. <span class="mono" style="color: var(--color-ash);">(illustrative ~40 KB/frame model)</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================ SOURCE ANCHORS ============================ -->
+  <section id="anchors">
+    <p class="label eyebrow">Source anchors</p>
+    <h2 class="headline">What we cherry-pick &mdash; and what must NOT be ported.</h2>
+    <p class="lede">
+      We cherry-pick <strong>patterns</strong> from <code>smart-image-animations</code>, re-implemented
+      clean against this spec. We do <em class="voice">not</em> copy-paste source code with its
+      accumulated stale context. This repo is training data for future readers and agents &mdash; every
+      leftover is a false fact waiting to be revived.
+    </p>
+
+    <h3 class="title" style="margin-top: var(--spacing-lg);">Cherry-pick map (§10)</h3>
+    <table>
+      <thead><tr><th>Take</th><th>From (file:line)</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td>Frame extraction, preview cleanup</td><td><span class="ref">slicing.py:12-130</span></td><td>Keep, lean</td></tr>
+        <tr><td>Finalize / select frames</td><td><span class="ref">slicing.py:66-95</span></td><td>Keep</td></tr>
+        <tr><td>Auto-crop + watermark symmetry enforcer</td><td><span class="ref">slicing.py:159-306</span></td><td>Keep (OpenCV only; drop AI/Gemma path)</td></tr>
+        <tr><td>Erase (inpaint)</td><td><span class="ref">slicing.py:512-556</span></td><td><strong>Upgrade &rarr; premium two-tier</strong></td></tr>
+        <tr><td>WebP convert, zero-pad rename</td><td><span class="ref">slicing.py:437-510</span></td><td>Keep</td></tr>
+        <tr><td>Thumbnail</td><td><span class="ref">slicing.py:559-587</span></td><td>Keep</td></tr>
+        <tr><td>Package builder + portable relative-path rewrite</td><td><span class="ref">main.py:271-341</span> · <span class="ref">slicing.py:423-435</span></td><td>Adapt &rarr; §8 contract</td></tr>
+        <tr><td>verify.mjs + fingerprint quality gate</td><td><span class="ref">templates/packages/.../verify.mjs</span></td><td>Adapt &rarr; §8 gates</td></tr>
+        <tr><td>Canvas cover-fit scroll player</td><td><span class="ref">animation_templates.py</span> (apple_scroll_zoom)</td><td>Distill &rarr; ONE index.html</td></tr>
+        <tr><td>Share (local / Tailscale)</td><td><span class="ref">lib/share.ts</span> · <span class="ref">/share/status</span></td><td>Keep</td></tr>
+        <tr><td>Slicer UI flow (trim/fps/filmstrip/exclude/crop/erase)</td><td><span class="ref">slicer/[jobId]/page.tsx</span></td><td>Re-skin to Impeccable, de-bloat</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="title" style="margin-top: var(--spacing-xl);">Regression context &mdash; DO NOT port (§10.1)</h3>
+    <table>
+      <thead><tr><th>Stale context in source</th><th>Where (file:line)</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td>AI/Gemma crop branch (<code>from .ai import AIClient</code>, <code>ai_client.analyze_image</code>)</td><td><span class="ref">slicing.py:164,204-221</span></td><td>Port only OpenCV deterministic crop + watermark enforcer. No MLX/Gemma references anywhere.</td></tr>
+        <tr><td>Telea inpaint as the primary erase</td><td><span class="ref">slicing.py:545</span></td><td>Becomes the labeled baseline fallback (§6), not &ldquo;the way.&rdquo; Don&rsquo;t port as default.</td></tr>
+        <tr><td>4-format frame sprawl (<code>.jpg/.jpeg/.webp/.png</code> checked everywhere)</td><td><span class="ref">slicing.py</span> passim</td><td>JPEG <em class="voice">preview</em> &rarr; WebP <em class="voice">package</em>. One format per stage, not four everywhere.</td></tr>
+        <tr><td><code>DEBUG</code> / <code>print(...)</code> debug logging</td><td><span class="ref">slicing.py:440,447-449</span></td><td>Use real logging or drop. No <code>print("DEBUG: ...")</code>.</td></tr>
+        <tr><td>Legacy <code>const baseUrl</code> regex (&ldquo;patch from older templates&rdquo;)</td><td><span class="ref">main.py:288</span></td><td>Dead compat path. Do not port; our paths are relative <code>./frames/...</code> by construction.</td></tr>
+        <tr><td><code>resize_factor = 1.0 # Optimize if needed</code>, commented hints, dead vars</td><td><span class="ref">slicing.py:211</span></td><td>Drop dead / aspirational code and comments.</td></tr>
+        <tr><td>Old &ldquo;experience&rdquo; meta fields (<code>trigger</code>, <code>effect</code>, <code>easing</code>, <code>prompt</code>, GSAP)</td><td><span class="ref">slicing.py:374-384</span></td><td>manifest.json is a fresh schema (§8). Don&rsquo;t carry GSAP-studio metadata.</td></tr>
+        <tr><td>Gold-standard multi-doc package ceremony (INSTRUCTIONS.llm.md, VIDEO_PROMPT.md, USE_CASES.md, VARIANTS.md, design-tokens.css, animation.tsx)</td><td><span class="ref">templates/packages/.../</span></td><td>Our package is the lean §8 contract. Take verify.mjs + fingerprint, not the doc pile.</td></tr>
+        <tr><td>Source PRODUCT.md / DESIGN.md (dark Void-Black / Electric-Blue brand)</td><td><span class="ref">docs/PRODUCT.md, docs/DESIGN.md</span></td><td>Author fresh (§7). Copying would contradict the Impeccable design.</td></tr>
+        <tr><td>MLX/Gemma stack, benchmarks, demos/ (<code>mlx_*.py</code>, <code>bench_*</code>, <code>demos/</code>)</td><td><span class="ref">repo-wide</span></td><td>Not ported at all (§2).</td></tr>
+        <tr><td>Next.js scaffolding &amp; studio routes (<code>slicer/[jobId]</code>, <code>animation-guide</code>, dashboard)</td><td><span class="ref">frontend/src/app/...</span></td><td>Rebuild single-page Vite/React; port slicer interactions, not the route tree or studio tabs.</td></tr>
+        <tr><td>Hardcoded <code>if (end - start) &gt; 10.0</code> wall</td><td><span class="ref">slicing.py:14</span></td><td>Replaced by <code>MAX_SLICE_SECONDS</code> constant + frame-budget check (§5.1).</td></tr>
+      </tbody>
+    </table>
+    <p class="lede" style="font-size: 0.9rem; margin-top: var(--spacing-md); color: var(--color-charcoal);">
+      <strong>Gate:</strong> the implementation workflow includes a regression-context reviewer that greps
+      the new repo for <code>DEBUG</code>, <code>Gemma</code>/<code>mlx</code>/<code>AIClient</code>,
+      <code>INPAINT_TELEA</code> (outside the fallback), <code>baseUrl</code>,
+      <code>trigger/effect/easing</code>, and dead multi-format checks &mdash; and fails if source stale
+      context leaked in.
+    </p>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Spec seed for <strong>seo-video-slicer</strong> &middot; source of truth: <a href="../../specs/seo-video-slicer-spec.md">docs/specs/seo-video-slicer-spec.md</a></span>
+    <span>Impeccable system &middot; light editorial chrome &middot; one decisive magenta</span>
+  </div>
+</footer>
+
+<script>
+  // Frame-budget meter — illustrates §5.1: seconds are configurable,
+  // frame count / package weight is the governor. Pure presentation
+  // (no network, no deps); an illustrative ~40 KB/frame WebP model.
+  (function () {
+    var KB_PER_FRAME = 40;          // illustrative q82–90 WebP average
+    var SOFT_CAP_MB = 4;            // CWV soft-cap warning threshold (§5.1)
+    var HARD_FRAMES = 200;          // scrollytelling ceiling
+    var dur = document.getElementById('dur');
+    var fps = document.getElementById('fps');
+    var durV = document.getElementById('durV');
+    var fpsV = document.getElementById('fpsV');
+    var framesEl = document.getElementById('frames');
+    var weightEl = document.getElementById('weight');
+    var laneEl = document.getElementById('lane');
+    var fill = document.getElementById('fill');
+    var verdict = document.getElementById('verdict');
+
+    function lane(frames, mb) {
+      // §5.1 three-lane model: hard over-budget only past HARD_FRAMES (200);
+      // the ~4 MB soft-cap is a non-fatal weight WARNING, not a hard fail.
+      if (frames > HARD_FRAMES) return { name: 'over budget', over: true };
+      if (frames < 20)         return { name: 'sparse (< 20)', over: false, warn: true };
+      if (frames <= 80)        return { name: 'hero / loop', over: false, warn: (mb > SOFT_CAP_MB) };
+      return { name: 'scrollytelling', over: false, warn: (mb > SOFT_CAP_MB) };
+    }
+
+    function suggestFps(seconds) {
+      // auto-suggest fps that keeps the hero lane (<=80 frames) as duration rises
+      return Math.max(2, Math.floor(80 / seconds));
+    }
+
+    function render() {
+      var s = +dur.value, f = +fps.value;
+      durV.textContent = s;
+      fpsV.textContent = f;
+      var frames = Math.round(s * f);
+      var mb = (frames * KB_PER_FRAME) / 1024;
+      var info = lane(frames, mb);
+
+      framesEl.textContent = frames;
+      framesEl.className = 'rv' + (info.over ? ' warn' : '');
+      weightEl.textContent = mb.toFixed(1) + ' MB';
+      weightEl.className = 'rv' + (mb > SOFT_CAP_MB ? ' warn' : '');
+      laneEl.textContent = info.name;
+      // One Voice: warn and over both read in the single accent; the copy + weight
+      // carry the difference. Only `over` is the hard fail.
+      laneEl.style.color = (info.over || info.warn) ? 'var(--color-accent)' : 'var(--color-charcoal)';
+
+      // meter fill: position against the 200-frame ceiling
+      var pct = Math.min(100, (frames / HARD_FRAMES) * 100);
+      fill.style.width = pct + '%';
+      fill.style.background = info.over ? 'var(--color-accent)' : 'var(--color-ink)';
+
+      if (info.over) {
+        var sug = suggestFps(s);
+        verdict.innerHTML = '<span class="over">Over the CWV budget.</span> ' +
+          'The meter would warn and auto-suggest dropping to <b class="mono">~' + sug +
+          ' fps</b> (&asymp; ' + Math.round(s * sug) + ' frames) to stay lean. verify.mjs G7 is the backstop.';
+      } else if (frames < 20) {
+        verdict.innerHTML = '<span class="ok">' + info.name + ' &mdash; under 20 frames reads choppy. ' +
+          'Raise fps for a smoother hero loop.</span>';
+      } else if (info.warn) {
+        var sugW = suggestFps(s);
+        verdict.innerHTML = '<span class="ok">' + info.name + ' lane &mdash; ' + frames + ' frames. ' +
+          'Projected <b class="mono">~' + mb.toFixed(1) + ' MB</b> tops the ~' + SOFT_CAP_MB +
+          ' MB soft-cap; the meter drops fps to <b class="mono">~' + sugW + ' fps</b> to stay LCP-safe.</span>';
+      } else {
+        verdict.innerHTML = '<span class="ok">Within budget &mdash; ' + info.name +
+          ' lane. ' + frames + ' frames &middot; ~' + mb.toFixed(1) + ' MB, lazy-loadable and LCP-safe.</span>';
+      }
+    }
+
+    dur.addEventListener('input', render);
+    fps.addEventListener('input', render);
+    render();
+  })();
+</script>
+</body>
+</html>
