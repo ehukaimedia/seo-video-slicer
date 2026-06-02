@@ -491,8 +491,8 @@
           <span class="tag same">recorded once</span>
         </div>
         <div class="drow">
-          <span class="k">G8 · ANMF dur == round(1000/manifest.fps)</span>
-          <span class="v" id="g8Val">83 ms == 83 ms</span>
+          <span class="k">G8 · Σ ANMF dur == frames × perFrameMs</span>
+          <span class="v" id="g8Val">2490 ms == 2490 ms</span>
           <span class="tag same" id="g8Tag">PASS</span>
         </div>
         <div class="drow">
@@ -505,17 +505,17 @@
       <p class="micro" style="margin-top: var(--spacing-md);">
         Illustrative sha (a deterministic stand-in, not a real WebP encode). The point is structural: the
         3-input fingerprint is fps-blind, so loop integrity needs dedicated gates. <strong>G9</strong>
-        re-hashes the baked <code>loop.webp</code> (catches re-encoded bytes); <strong>G8</strong> reads
-        each ANMF frame-duration and binds it to <code>manifest.loop.fps</code> (catches a
+        re-hashes the baked <code>loop.webp</code> (catches re-encoded bytes); <strong>G8</strong> sums the
+        ANMF frame-durations and binds the total to <code>frames.count &times; perFrameMs</code> (catches a
         manifest-fps-only edit with the bytes untouched). Together they make
         <span class="mono">fps &harr; bytes &harr; manifest</span> mutually consistent &mdash; the frozen
-        recipe is never touched. <span class="mono" style="color: var(--ink-muted);">G8 also checks it is a real animated WebP: VP8X+ANIM, ANMF count == frames.count.</span>
+        recipe is never touched. <span class="mono" style="color: var(--ink-muted);">Sum-based (not per-frame) because libwebp coalesces byte-identical consecutive frames into fewer ANMF with summed durations; <code>perFrameMs = floor(1000/fps + 0.5)</code> is pinned identically in the Python encoder and the Node verifier (banker's-rounding parity bug at fps 16).</span>
       </p>
     </div>
 
     <h3 class="title" style="margin-top: var(--spacing-xl);">Loop gates &mdash; <span class="accent">G8/G9 new</span>, G4/G7 adapted</h3>
     <div class="gates">
-      <div class="gate new"><span class="gid">G8</span><span class="gtxt"><strong>loop.webp structure + fps binding (NEW).</strong> Real animated WebP &mdash; RIFF/WEBP, <code>VP8X</code> with the ANIM flag, an <code>ANIM</code> chunk, and an <code>ANMF</code> count == <code>frames.count</code>. AND each ANMF's 24-bit duration == <code>round(1000/manifest.loop.fps)</code>, binding fps to the bytes. <code>node:fs</code>, zero-dep.</span></div>
+      <div class="gate new"><span class="gid">G8</span><span class="gtxt"><strong>loop.webp structure + fps binding (NEW).</strong> Real animated WebP &mdash; RIFF/WEBP, <code>VP8X</code> with the ANIM flag, an <code>ANIM</code> chunk, and <code>1 &le; ANMF count &le; frames.count</code> (libwebp coalesces identical consecutive frames). Cadence bound by the SUM: <code>Σ(ANMF 24-bit durations) == frames.count × perFrameMs</code>, <code>perFrameMs = floor(1000/fps + 0.5)</code> pinned identically in Python &amp; Node. <code>node:fs</code>, zero-dep.</span></div>
       <div class="gate new"><span class="gid">G9</span><span class="gtxt"><strong>loop.webp integrity (NEW).</strong> <code>sha256(loop.webp)</code> == <code>manifest.loop.webp_sha256</code> (<code>node:crypto</code>). A re-encode changes the bytes &rarr; FAIL.</span></div>
       <div class="gate"><span class="gid">G4</span><span class="gtxt"><strong>loop technique check (adapted, presence gate).</strong> cover-fit, DPR, onerror preload, reduced-motion block, <code>data-template-id=loop.v1</code>, and the positive time markers <code>requestAnimationFrame</code> + <code>performance.now()</code>. The time-driven loop is additionally proven in-browser in Phase 0 (regex can't prove a formula).</span></div>
       <div class="gate"><span class="gid">G7</span><span class="gtxt"><strong>weight (adapted, re-measured from disk).</strong> Hard-fail stays <code>frames.count &gt; 200</code> (and <code>&lt; 1</code>). <code>loop.webp</code> counts toward <code>total_bytes</code>; oversized <code>loop.webp</code> is a soft warning, never a fail.</span></div>
@@ -700,10 +700,12 @@
     var FP = pseudoSha('frames:30|gsap:|tid:seo-video-slicer.loop.v1');
     var MANIFEST_SHA = pseudoSha('loop.webp@fps=' + BUILD_FPS);
 
+    var FRAME_N = 30;                          // example/sample-package frame count
+    var perFrameMs = function (fps) { return Math.floor(1000 / fps + 0.5); };  // pinned formula (Node+Python)
     function render() {
       var f = +lfps.value;
       lfpsV.textContent = f;
-      ldur.textContent = Math.round(1000 / f);
+      ldur.textContent = perFrameMs(f);
 
       fpVal.textContent = FP.slice(0, 24) + '…  (frames, "", loop.v1)';
       mfVal.textContent = MANIFEST_SHA.slice(0, 24) + '…  (recorded at build: fps ' + BUILD_FPS + ')';
@@ -717,21 +719,21 @@
       g9Tag.className = 'tag ' + (match ? 'same' : 'fail');
       shaTag.className = 'tag ' + (match ? 'same' : 'changed');
 
-      var builtDur = Math.round(1000 / BUILD_FPS);
-      var liveDur = Math.round(1000 / f);
-      g8Val.textContent = liveDur + ' ms vs ' + builtDur + ' ms (manifest fps ' + BUILD_FPS + ')';
+      var builtSum = FRAME_N * perFrameMs(BUILD_FPS);
+      var liveSum = FRAME_N * perFrameMs(f);
+      g8Val.textContent = liveSum + ' ms vs ' + builtSum + ' ms (Σ over ' + FRAME_N + ' frames)';
       g8Tag.textContent = match ? 'PASS' : 'FAIL';
       g8Tag.className = 'tag ' + (match ? 'same' : 'fail');
 
       if (match) {
         g9Verdict.innerHTML = '<span class="accent">As built (fps ' + BUILD_FPS + ').</span> G5 (fingerprint), ' +
-          'G8 (durations match manifest.fps), and G9 (bytes match recorded sha) all pass — the package is intact.';
+          'G8 (Σ durations == frames × perFrameMs), and G9 (bytes match recorded sha) all pass — the package is intact.';
       } else {
         g9Verdict.innerHTML = '<span class="accent">Re-encoded at fps ' + f + '.</span> The 3-input ' +
           'fingerprint is <em>unchanged</em> (G5 still green) — it never saw fps. <strong>G9</strong> catches the ' +
-          'changed bytes; <strong>G8</strong> catches the changed per-frame duration vs manifest.fps. (Editing ' +
-          'manifest.loop.fps alone, bytes untouched, would leave G9 green but still fail G8.) The gap is closed ' +
-          'with gates, never by touching the frozen recipe.';
+          'changed bytes; <strong>G8</strong> catches the changed cadence — Σ durations no longer equals ' +
+          'frames × perFrameMs. (Editing manifest.loop.fps alone, bytes untouched, would leave G9 green but still fail G8.) ' +
+          'The gap is closed with gates, never by touching the frozen recipe.';
       }
     }
 
