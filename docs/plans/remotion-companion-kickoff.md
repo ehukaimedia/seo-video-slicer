@@ -24,7 +24,7 @@ Two output modes requested: **scrolling** (already shipped — the `index.html` 
 
 ## Why it fits (already-built primitives to reuse — do NOT rebuild)
 
-- `package-contract/build_package.mjs` already takes **a frames dir → a complete, gate-verified package** headlessly (it's how `example/sample-package/` and `docs/assets/demo.webp` were built). The headless core exists.
+- `package-contract/build_package.mjs` already takes **a frames dir → a complete, gate-verified package** headlessly (it's how `example/sample-package/` was built). The headless core exists. (Correction: the animated `docs/assets/demo.webp` loop was **not** built by this kernel — the zero-dep Node kernel only assembles frame sequences; the animated-WebP loop export is a separate Python primitive, see the loop mode in `docs/specs/remotion-companion-spec.md`.)
 - The backend exposes a clean **HTTP API** (`backend/app/main.py`, see `app-contract/API.md`) for upload → preview → finalize → crop → erase → package.
 - The tool is **`uvx`-installable** (a release wheel bundles the UI + kernel; see `backend/pyproject.toml`, `backend/app/cli.py`, `scripts/build-wheel.sh`).
 - `package-contract/verify.mjs` gates every package (G1–G7) + a tamper fingerprint. The contract is **frozen** in `package-contract/CONTRACT.md` (`seo-video-slicer.package.v1`).
