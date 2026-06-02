@@ -1,0 +1,12 @@
+# SEO Video Slicer — backend DEV / TEST dependencies.
+#
+# Installed on top of requirements.txt for running the pytest suite. httpx is the
+# transport fastapi.testclient.TestClient drives; pytest is the runner.
+#
+# cv2 (opencv) and Pillow are inherited from system site-packages on the dev
+# machine (see requirements.txt) and so are NOT listed here. CI, which has no such
+# system packages, adds opencv-python-headless + pillow on its own install line
+# (.github/workflows/ci.yml) so the app imports under CI.
+
+pytest>=8.0
+httpx>=0.27
