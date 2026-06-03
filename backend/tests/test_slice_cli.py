@@ -40,7 +40,18 @@ requires_ffmpeg = pytest.mark.skipif(
 
 
 def _run(argv: list[str], capsys: pytest.CaptureFixture[str]) -> tuple[int, str, str]:
-    """Invoke ``slice_cli.main`` in-process; return ``(exit_code, stdout, stderr)``."""
+    """Invoke ``slice_cli.main`` in-process; return ``(exit_code, stdout, stderr)``.
+
+    HERMETICITY (exposure-reduction, not a root-cause fix): drain ``capsys`` first so
+    the returned ``out``/``err`` reflect ONLY what ``slice_cli.main`` wrote on THIS
+    call — never a byte that leaked into this test's capture buffer *before* the call
+    (e.g. a prior test's async/thread-teardown ``sys.stderr`` write, an
+    ``unraisablehook``/async-generator-finalization line surfacing during GC). Without
+    the drain such a stray byte is misattributed to the CLI and can flip the strict
+    ``assert err == ""`` (and the pure-JSON ``_json_stdout`` parse) order-flakily. The
+    assertions are unchanged — they still pin the CLI's exact output.
+    """
+    capsys.readouterr()  # discard any pre-call leakage from this capture buffer
     code = slice_cli.main(argv)
     captured = capsys.readouterr()
     return code, captured.out, captured.err
