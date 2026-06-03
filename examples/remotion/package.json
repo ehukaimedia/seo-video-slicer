@@ -1,0 +1,21 @@
+{
+  "name": "seo-video-slicer-remotion-example",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A tiny, self-contained Remotion hero composition that renders to a PNG sequence for the seo-video-slicer (render -> slice -> embed).",
+  "license": "MIT",
+  "scripts": {
+    "studio": "remotion studio",
+    "render-sequence": "remotion render HeroLoop out/ --sequence --image-format=png \"--image-sequence-pattern=frame_[frame].[ext]\""
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.470",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "remotion": "4.0.470"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.7",
+    "typescript": "5.9.3"
+  }
+}

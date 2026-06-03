@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- **Remotion companion + Claude/Codex MCP plugin** — turn the slicer into a headless, agent-invokable output companion for [Remotion](https://www.remotion.dev/):
+  - **Headless `slice` CLI** — `seo-video-slicer slice <video|frames-dir> --mode scroll|loop --fps <n> [--start <s>] [--end <s>] --out-dir <dir> [--json] [--no-verify]`: non-interactive, with a deterministic exit-code contract (0 = pass · 1 = gate fail · 2 = input/build error) for CI and agents.
+  - **Loop output mode** — a new `seo-video-slicer.loop.v1` template: an auto-advancing, time-based `requestAnimationFrame` player plus an animated `loop.webp` export, shipped as a new `seo-video-slicer.loop-package.v1` schema that never touches the frozen `package.v1`. Gated by two new offline checks: **G8** (animated-WebP structure + a coalescing-robust `fps ↔ duration` binding) and **G9** (`loop.webp` content sha256).
+  - **MCP server** (`slice_video` / `slice_frames`, stdio) for Claude Code and Codex, installable via the optional `seo-video-slicer[mcp]` extra, with a thin `/slice` command wrapper and registration docs for both clients.
+  - **Remotion recipe** — a runnable `examples/remotion/` project plus docs for `render --sequence → slice → embed` (frames-dir ingest accepts both Remotion's default `element-NNNN.png` and `frame_NNN`).
+
+### Changed
+
+- Loop packages report **`seo.lcp_safe` honestly** (weight-derived from the ~4 MB Core-Web-Vitals soft cap) instead of a hardcoded `true`. The frozen scroll `package.v1` output is unchanged.
 
 ## [0.1.1] - 2026-06-02
 

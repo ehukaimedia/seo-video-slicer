@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Remotion Companion + MCP Plugin — Spec Seed</title>
+<style>
+  /* ============================================================
+     THE DARK INSTRUMENT — tokens mirrored from /DESIGN.md
+     (the design system of record; theme.css is its 1:1 port).
+     Void-Black canvas, Panel-Deep panels, Hairline seams, three
+     inks, and ONE accent: Electric Blue, used on <10% of the
+     surface. The One Accent Rule. Verbatim with the sibling
+     architecture spec seed so the two read as one system.
+     ============================================================ */
+  :root {
+    --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+    --font-mono: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, monospace;
+
+    --spacing-xs: 8px;
+    --spacing-sm: 16px;
+    --spacing-md: 24px;
+    --spacing-lg: 32px;
+    --spacing-xl: 48px;
+    --spacing-2xl: 80px;
+    --spacing-3xl: 120px;
+
+    --width-max: 1400px;
+    --width-content: 900px;
+
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);   /* --ease-out-expo */
+    --duration-fast: 0.15s;
+    --duration-base: 0.2s;
+    --duration-slow: 0.4s;
+
+    /* Surfaces — the dark stage */
+    --bg: oklch(8% 0 0);             /* Void Black (page canvas) */
+    --panel-deep: oklch(15% 0 0);    /* Panel Deep (cards, panels, inputs) */
+    --hairline: oklch(22% 0 0);      /* Hairline (1px seams, dividers) */
+
+    /* Inks */
+    --ink-primary: oklch(98% 0 0);
+    --ink-secondary: oklch(75% 0 0);
+    --ink-muted: oklch(55% 0 0);
+
+    /* Accent — Electric Blue (the single voice) */
+    --accent: oklch(65% 0.20 250);
+    --accent-hover: oklch(65% 0.20 250 / 0.3);
+    --accent-whisper: oklch(65% 0.20 250 / 0.15);
+    --accent-veil: oklch(65% 0.20 250 / 0.4);
+
+    --stage-deep: oklch(8% 0 0);
+    --stage-ink: oklch(98% 0 0);
+    --stage-ink-dim: oklch(75% 0 0);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  * { margin: 0; }
+  img, svg { display: block; max-width: 100%; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.6;                 /* The 1.6 Leading Rule */
+    color: var(--ink-secondary);
+    background: var(--bg);            /* Void-Black-Not-Pure-Black Rule */
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .wrap { max-width: var(--width-max); margin: 0 auto; padding: 0 var(--spacing-lg); }
+  section { padding: var(--spacing-2xl) 0; border-top: 1px solid var(--hairline); }
+  section:first-of-type { border-top: none; }
+  .lede { max-width: 72ch; }
+
+  .display {
+    font-family: var(--font-sans); font-weight: 700;
+    font-size: clamp(2.5rem, 7vw, 4.5rem); line-height: 1;
+    letter-spacing: -0.02em; color: var(--ink-primary);
+  }
+  h2.headline {
+    font-family: var(--font-sans); font-weight: 700;
+    font-size: clamp(1.75rem, 4vw, 2.5rem); line-height: 1.15;
+    letter-spacing: -0.02em; color: var(--ink-primary); margin-bottom: var(--spacing-md);
+  }
+  h3.title {
+    font-family: var(--font-sans); font-weight: 600;
+    font-size: clamp(1.125rem, 2.5vw, 1.6rem); line-height: 1.3;
+    letter-spacing: -0.01em; color: var(--ink-primary); margin-bottom: var(--spacing-sm);
+  }
+  h4.subtitle {
+    font-family: var(--font-sans); font-weight: 600; font-size: 1.0625rem;
+    color: var(--ink-primary); margin-bottom: var(--spacing-xs);
+  }
+  p { max-width: 72ch; }
+  p + p { margin-top: var(--spacing-sm); }
+
+  .label { font-family: var(--font-mono); font-weight: 500; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .micro { font-family: var(--font-mono); font-weight: 500; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-muted); }
+  .mono { font-family: var(--font-mono); font-size: 0.8125rem; }
+  code, .code { font-family: var(--font-mono); font-size: 0.8125em; background: var(--panel-deep); border: 1px solid var(--hairline); border-radius: 4px; padding: 1px 6px; }
+  .accent { color: var(--accent); }
+  em.voice { font-style: italic; color: var(--ink-secondary); }
+
+  header.site { position: sticky; top: 0; z-index: 20; background: var(--bg); border-bottom: 1px solid var(--hairline); height: 62px; display: flex; align-items: center; }
+  header.site .wrap { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+  .brand { display: flex; align-items: baseline; gap: 10px; }
+  .brand .mark { font-family: var(--font-sans); font-weight: 700; letter-spacing: -0.02em; font-size: 1.25rem; color: var(--ink-primary); }
+  .brand .kind { font-family: var(--font-mono); font-size: 0.6875rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-muted); }
+  nav.toc { display: flex; gap: var(--spacing-md); }
+  nav.toc a { font-size: 0.85rem; font-weight: 500; color: var(--ink-secondary); text-decoration: none; transition: color var(--duration-fast) linear; }
+  nav.toc a:hover { color: var(--accent); }
+  @media (max-width: 880px) { nav.toc { display: none; } }
+
+  .hero { padding-top: var(--spacing-2xl); padding-bottom: var(--spacing-xl); }
+  .hero .kicker { color: var(--accent); margin-bottom: var(--spacing-md); }
+  .hero p.lead { font-size: 1.125rem; color: var(--ink-secondary); margin-top: var(--spacing-md); }
+
+  .panel { background: var(--panel-deep); border: 1px solid var(--hairline); padding: var(--spacing-lg); }
+  .panel.now { border-color: var(--accent-veil); box-shadow: 0 0 20px var(--accent-whisper); }  /* the rare glow-glow */
+  .panel ul { margin: var(--spacing-sm) 0 0; padding-left: 1.1em; }
+  .panel li { margin-bottom: 6px; font-size: 0.95rem; }
+
+  .framings { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing-md); margin-top: var(--spacing-lg); }
+  @media (max-width: 760px) { .framings { grid-template-columns: 1fr; } }
+  .framings .f { padding: var(--spacing-md); border-top: 2px solid var(--ink-muted); }
+  .framings .f.lead-f { border-top-color: var(--accent); }
+  .framings .f .n { font-family: var(--font-mono); font-size: 0.75rem; color: var(--ink-muted); }
+  .framings .f h4 { margin-top: 6px; }
+
+  /* ---- pipeline strip ---- */
+  .pipeline { margin-top: var(--spacing-xl); }
+  .pipe-track { display: flex; align-items: stretch; gap: 0; overflow-x: auto; border: 1px solid var(--hairline); background: var(--panel-deep); }
+  .pstep { flex: 1 0 auto; min-width: 120px; padding: var(--spacing-md) var(--spacing-sm); text-align: center; border-right: 1px solid var(--hairline); position: relative; }
+  .pstep:last-child { border-right: none; }
+  .pstep .pn { font-family: var(--font-mono); font-size: 0.65rem; color: var(--ink-muted); }
+  .pstep .pt { font-family: var(--font-sans); font-weight: 700; letter-spacing: -0.01em; font-size: 1rem; color: var(--ink-primary); margin-top: 4px; }
+  .pstep .pm { font-family: var(--font-mono); font-size: 0.65rem; color: var(--accent); margin-top: 6px; }
+  .pstep.terminal { background: var(--accent); }
+  .pstep.terminal .pn, .pstep.terminal .pt, .pstep.terminal .pm { color: var(--bg); }
+
+  /* ---- architecture layers ---- */
+  .layers { display: flex; flex-direction: column; gap: var(--spacing-md); margin-top: var(--spacing-lg); }
+  .layer { background: var(--panel-deep); border: 1px solid var(--hairline); padding: var(--spacing-md) var(--spacing-lg); display: grid; grid-template-columns: 210px 1fr; gap: var(--spacing-lg); align-items: center; }
+  @media (max-width: 700px) { .layer { grid-template-columns: 1fr; gap: var(--spacing-xs); } }
+  .layer .lname { display: flex; flex-direction: column; gap: 4px; }
+  .layer .lname .tier { font-family: var(--font-mono); font-size: 0.7rem; color: var(--ink-muted); letter-spacing: 0.08em; }
+  .layer .lname strong { font-family: var(--font-sans); font-weight: 700; letter-spacing: -0.01em; font-size: 1.15rem; color: var(--ink-primary); }
+  .layer .ldesc { font-size: 0.92rem; color: var(--ink-secondary); }
+  .layer.contract { border-color: var(--accent-veil); box-shadow: 0 0 20px var(--accent-whisper); }
+  .flowdown { text-align: center; font-family: var(--font-mono); color: var(--accent); font-size: 1.1rem; line-height: 1; }
+  .edge { display: block; margin-top: 6px; font-family: var(--font-mono); font-size: 0.7rem; color: var(--ink-muted); letter-spacing: 0.02em; }
+  .edge b { color: var(--ink-secondary); font-weight: 500; }
+
+  /* ---- current vs target / two-col ---- */
+  .cvt { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); margin-top: var(--spacing-md); }
+  @media (max-width: 760px) { .cvt { grid-template-columns: 1fr; } }
+  .cvt .col { padding: var(--spacing-md); background: var(--panel-deep); border: 1px solid var(--hairline); }
+  .cvt .col.now { border-top: 2px solid var(--ink-muted); }
+  .cvt .col.target { border-top: 2px solid var(--accent); }
+  .cvt ul { margin: var(--spacing-sm) 0 0; padding-left: 1.1em; }
+  .cvt li { margin-bottom: 8px; font-size: 0.93rem; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: var(--spacing-md); font-size: 0.9rem; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+  thead th { font-family: var(--font-mono); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-muted); }
+  tbody tr:hover { background: var(--panel-deep); }
+  td .ref { font-family: var(--font-mono); font-size: 0.78rem; color: var(--accent); white-space: nowrap; }
+
+  .endpoints { font-family: var(--font-mono); font-size: 0.82rem; background: var(--panel-deep); border: 1px solid var(--hairline); padding: var(--spacing-md) var(--spacing-lg); margin-top: var(--spacing-md); overflow-x: auto; }
+  .endpoints .row { display: grid; grid-template-columns: 96px 1fr; gap: var(--spacing-sm); padding: 5px 0; align-items: baseline; }
+  .endpoints .m { font-weight: 500; color: var(--accent); }
+  .endpoints .path { color: var(--ink-primary); }
+  .endpoints .ret { color: var(--ink-muted); font-size: 0.74rem; }
+
+  .gates { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--spacing-sm); margin-top: var(--spacing-md); }
+  @media (max-width: 700px) { .gates { grid-template-columns: 1fr; } }
+  .gate { display: grid; grid-template-columns: 48px 1fr; gap: var(--spacing-sm); padding: var(--spacing-sm); background: var(--panel-deep); border: 1px solid var(--hairline); align-items: start; }
+  .gate.new { border-color: var(--accent-veil); }
+  .gate .gid { font-family: var(--font-mono); font-weight: 500; font-size: 1rem; color: var(--accent); }
+  .gate .gtxt { font-size: 0.88rem; }
+  .gate .gtxt strong { font-weight: 600; }
+
+  .tree { font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.9; background: var(--panel-deep); color: var(--ink-primary); padding: var(--spacing-md) var(--spacing-lg); border: 1px solid var(--hairline); white-space: pre; overflow-x: auto; margin-top: var(--spacing-md); }
+  .tree .dir { color: var(--ink-secondary); }
+  .tree .file { color: var(--ink-primary); }
+  .tree .cm { color: var(--ink-muted); }
+  .tree .star { color: var(--accent); }
+
+  .steps { margin-top: var(--spacing-md); display: grid; gap: 2px; }
+  .step { display: grid; grid-template-columns: 64px 1fr; gap: var(--spacing-md); padding: var(--spacing-sm) 0; border-bottom: 1px solid var(--hairline); align-items: baseline; }
+  .step .sn { font-family: var(--font-mono); font-size: 0.95rem; color: var(--ink-muted); }
+  .step.zero .sn { color: var(--accent); }
+  .step .sb strong { font-weight: 600; }
+  .step .sb span { color: var(--ink-secondary); font-size: 0.92rem; }
+
+  .nogoals { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--spacing-sm); margin-top: var(--spacing-md); }
+  @media (max-width: 700px) { .nogoals { grid-template-columns: 1fr; } }
+  .ng { padding: var(--spacing-sm) var(--spacing-md); border: 1px solid var(--hairline); background: var(--panel-deep); font-size: 0.92rem; }
+  .ng .x { color: var(--accent); font-family: var(--font-mono); margin-right: 8px; }
+
+  /* ---- G9 integrity demonstrator ---- */
+  .demo { margin-top: var(--spacing-md); padding: var(--spacing-lg); background: var(--panel-deep); border: 1px solid var(--hairline); }
+  .demo .ctl { display: flex; flex-direction: column; gap: 6px; max-width: 360px; }
+  .demo label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-muted); font-weight: 500; }
+  .demo input[type=range] { width: 100%; accent-color: var(--accent); }
+  .demo .val b { color: var(--accent); font-family: var(--font-mono); }
+  .demo .rows { display: grid; gap: 10px; margin-top: var(--spacing-lg); }
+  .demo .drow { display: grid; grid-template-columns: 220px 1fr auto; gap: var(--spacing-md); align-items: center; font-family: var(--font-mono); font-size: 0.8rem; border-top: 1px solid var(--hairline); padding-top: 10px; }
+  @media (max-width: 640px) { .demo .drow { grid-template-columns: 1fr; gap: 4px; } }
+  .demo .drow .k { color: var(--ink-muted); }
+  .demo .drow .v { color: var(--ink-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .demo .tag { font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; border: 1px solid var(--hairline); }
+  .demo .tag.same { color: var(--ink-muted); }
+  .demo .tag.changed { color: var(--accent); border-color: var(--accent-veil); }
+  .demo .tag.fail { color: var(--bg); background: var(--accent); border-color: var(--accent); }
+  .demo .verdict { margin-top: var(--spacing-lg); font-size: 0.95rem; }
+
+  footer { padding: var(--spacing-2xl) 0 var(--spacing-xl); border-top: 1px solid var(--hairline); color: var(--ink-muted); font-size: 0.85rem; }
+  footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--spacing-md); }
+  footer a { color: var(--ink-secondary); }
+  .eyebrow { color: var(--accent); margin-bottom: var(--spacing-sm); }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<!-- INTENT: This spec seed informs the build of the Remotion-companion + Claude/Codex MCP-plugin
+     feature for seo-video-slicer. The decision it encodes: turn the existing slicer pipeline into a
+     HEADLESS, AGENT-INVOKABLE companion (a `slice` CLI + MCP tools) and add a second output mode —
+     LOOP — as a NEW, parallel contract (seo-video-slicer.loop.v1 / loop-package.v1) that NEVER mutates
+     the FROZEN seo-video-slicer.package.v1. The anti-patterns it prevents: (a) shipping a raw heavy
+     Remotion MP4 as a hero (bad LCP, no reduced-motion, no scroll-scrub); (b) hand-running the
+     upload->finalize->package UI dance an agent should do in one call; (c) silently breaking the
+     frozen scroll contract while adding loop. Key resolved risk: fps bakes loop.webp bytes, so the
+     verbatim 3-input fingerprint can't detect a re-encoded loop.webp — closed by new gates G8/G9, NOT
+     by extending the frozen recipe. Source of truth: docs/specs/remotion-companion-spec.md. -->
+
+<header class="site">
+  <div class="wrap">
+    <div class="brand">
+      <span class="mark">Remotion Companion</span>
+      <span class="kind">MCP Plugin · Spec Seed</span>
+    </div>
+    <nav class="toc">
+      <a href="#intent">Intent</a>
+      <a href="#pipeline">Pipeline</a>
+      <a href="#contract">Loop Contract</a>
+      <a href="#seed">Spec Seed</a>
+      <a href="#anchors">Source Anchors</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============================ HERO ============================ -->
+  <section class="hero" id="top">
+    <p class="label kicker">Companion feature · v1 pre-implementation · branch feat/remotion-companion</p>
+    <h1 class="display">Remotion renders.<br>The slicer ships.</h1>
+    <p class="lead lede">
+      Make seo-video-slicer the <strong>output companion</strong> for Remotion and an invokable
+      <strong>plugin for Claude Code / Codex</strong>: a headless <code>slice</code> CLI, a
+      <strong>loop</strong> output mode (a new <code>seo-video-slicer.loop.v1</code> template),
+      <code>slice_video</code> / <code>slice_frames</code> MCP tools, and a Remotion
+      <code>--sequence</code> recipe &mdash; all over the primitives that already exist, never mutating
+      the frozen package contract.
+    </p>
+  </section>
+
+  <!-- ============================ INTENT ============================ -->
+  <section id="intent">
+    <p class="label eyebrow">Intent · renderer → optimizer → repo</p>
+    <h2 class="headline">Remotion is the renderer. We are the web-delivery optimizer.</h2>
+    <p class="lede">
+      A raw Remotion MP4 is heavy and poor for a hero or scroll moment &mdash; bad LCP, autoplay limits,
+      no scroll-scrubbing, no reduced-motion story. The slicer already turns a clip into a
+      Core-Web-Vitals-friendly WebP <strong>package</strong> with a working, self-contained player. This
+      feature makes that pipeline headless, agent-invokable, and adds a second output mode.
+    </p>
+
+    <div class="pipeline">
+      <div class="pipe-track">
+        <div class="pstep"><div class="pn">render</div><div class="pt">Remotion</div><div class="pm">React → motion</div></div>
+        <div class="pstep"><div class="pn">in</div><div class="pt">video · --sequence</div><div class="pm">mp4 / png · jpeg</div></div>
+        <div class="pstep"><div class="pn">call</div><div class="pt">slice · MCP</div><div class="pm">CLI / stdio tools</div></div>
+        <div class="pstep"><div class="pn">opt</div><div class="pt">WebP</div><div class="pm">q82–90 · zero-pad</div></div>
+        <div class="pstep terminal"><div class="pn">out</div><div class="pt">Package</div><div class="pm">verify.mjs · scroll | loop</div></div>
+      </div>
+      <p class="micro" style="margin-top: var(--spacing-sm);">
+        render &rarr; (video | frames) &rarr; slice/MCP &rarr; optimize &rarr; gated package &mdash; one path, no studio branch.
+      </p>
+    </div>
+
+    <div class="framings">
+      <div class="f lead-f">
+        <div class="n">01 / companion</div>
+        <h4 class="subtitle">Headless by design</h4>
+        <p>One command (or one MCP call) turns a video or a Remotion <code>--sequence</code> dir into a
+        gated package. Non-interactive. The <strong>CLI</strong> exits non-zero on a gate failure (CI-ready);
+        the <strong>MCP</strong> call still succeeds and returns <code>verify.pass=false</code> so the agent keeps the gate detail.</p>
+      </div>
+      <div class="f">
+        <div class="n">02 / plugin</div>
+        <h4 class="subtitle">An MCP tool for agents</h4>
+        <p><code>slice_video</code> / <code>slice_frames</code> over stdio for Claude Code <em class="voice">and</em>
+        Codex. The agent says &ldquo;render, then slice into a loop&rdquo; &mdash; and it just works.</p>
+      </div>
+      <div class="f">
+        <div class="n">03 / loop</div>
+        <h4 class="subtitle">A second output mode</h4>
+        <p>An auto-advancing rAF player + an animated <code>loop.webp</code> export, as a NEW parallel
+        contract. The frozen scroll package is untouched.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ ARCHITECTURE / PIPELINE ============================ -->
+  <section id="pipeline">
+    <p class="label eyebrow">Architecture · the source of truth on every edge</p>
+    <h2 class="headline">Thin front-doors over primitives that already exist.</h2>
+    <p class="lede">
+      Read top-to-bottom as call flow; each <span class="mono">edge</span> names <strong>who calls
+      whom</strong>. Nothing here is new media code &mdash; it is two new front-doors (CLI, MCP) and one
+      new template (loop) over <code>slicing.py</code> / <code>packager.py</code> / the Node kernel.
+    </p>
+
+    <div class="layers">
+      <div class="layer">
+        <div class="lname"><span class="tier">L0 · upstream</span><strong>Remotion</strong></div>
+        <div class="ldesc">
+          Renders a composition to a <code>video</code> (mp4) or a <code>--sequence</code> directory of
+          PNG/JPEG frames. Out of our process; we consume its output.
+          <span class="edge">edge &middot; <b>produces files</b> the CLI/MCP read · source: spec §8</span>
+        </div>
+      </div>
+      <div class="flowdown" aria-hidden="true">&darr;</div>
+
+      <div class="layer">
+        <div class="lname"><span class="tier">L1 · front-door</span><strong>slice CLI · MCP</strong></div>
+        <div class="ldesc">
+          <code>seo-video-slicer slice &lt;path&gt;</code> (auto-detects video vs frames-dir) and
+          <code>backend/app/mcp/</code> (Python + FastMCP, stdio). Both are thin: parse args, call the
+          packager, return <code>{package_dir, verify, loop_webp?}</code>.
+          <span class="edge">edge &middot; <b>CLI/MCP &rarr; slicing + packager</b> by direct call (no UI, no server) · source: spec §5, §7</span>
+        </div>
+      </div>
+      <div class="flowdown" aria-hidden="true">&darr;</div>
+
+      <div class="layer">
+        <div class="lname"><span class="tier">L2 · media ops</span><strong>slicing.py</strong></div>
+        <div class="ldesc">
+          <code>extract_preview</code> (ffmpeg trim/fps &rarr; JPEG), <code>finalize_to_webp</code> (Pillow
+          q82–90, zero-pad), and a new <code>convert_frames_to_webp</code> for PNG/JPEG Remotion frames.
+          Pure functions over temp dirs &mdash; no JobStore.
+          <span class="edge">edge &middot; <b>front-door owns invocation</b>; this layer is reused as-is · source: spec §5.2, §8.2</span>
+        </div>
+      </div>
+      <div class="flowdown" aria-hidden="true">&darr;</div>
+
+      <div class="layer">
+        <div class="lname"><span class="tier">L3 · assemble</span><strong>packager.py</strong></div>
+        <div class="ldesc">
+          <code>build_and_verify(...)</code> shells the Node kernel and parses gates. Gains a
+          <code>mode</code>/<code>template</code> param; for loop it also drives the new
+          <code>loop_export.py</code> (Pillow <code>save_all</code>) before assembly.
+          <span class="edge">edge &middot; <b>packager runs verify.mjs and gates the result</b> · source: spec §5.2, §6.7</span>
+        </div>
+      </div>
+      <div class="flowdown" aria-hidden="true">&darr;</div>
+
+      <div class="layer">
+        <div class="lname"><span class="tier">L4 · kernel</span><strong>build_package.mjs · verify.mjs</strong></div>
+        <div class="ldesc">
+          Zero-dependency Node. Extended <strong>additively</strong> with a branch keyed on
+          <code>schema</code>: scroll path unchanged; loop path loads the loop template, emits the loop
+          schema + <code>loop</code> block, and runs G8/G9. <code>fingerprint()</code> stays two verbatim
+          copies. Edit the canonical <code>package-contract/</code> copies, never the generated
+          <code>_kernel/</code>.
+          <span class="edge">edge &middot; <b>builder ↔ verifier share the recipe byte-for-byte</b> · source: spec §6.4, CONTRACT.md §2</span>
+        </div>
+      </div>
+      <div class="flowdown" aria-hidden="true">&darr;</div>
+
+      <div class="layer contract">
+        <div class="lname"><span class="tier">L5 · deliverable</span><strong class="accent">Package (scroll | loop)</strong></div>
+        <div class="ldesc">
+          A self-contained folder: zero external requests, relative paths, opens offline. Scroll =
+          <code>seo-video-slicer.package.v1</code> (frozen, untouched). Loop =
+          <code>seo-video-slicer.loop-package.v1</code> + <code>loop.webp</code>.
+          <span class="edge">edge &middot; <b>consumed by the downstream repo / agent</b>; the contract is the source of truth · source: spec §6</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ LOOP CONTRACT ============================ -->
+  <section id="contract">
+    <p class="label eyebrow">The loop.v1 contract · Phase 0 · define this FIRST</p>
+    <h2 class="headline">A new parallel contract. The frozen v1 is never touched.</h2>
+    <p class="lede">
+      A loop package <em class="voice">cannot</em> be a <code>package.v1</code> manifest: v1 freezes the
+      schema, <code>player.interaction</code>, and the <code>data-template-id</code> to scroll values, and
+      the gate enforces the scroll template-id in G4/G5. So loop gets its own schema + template id,
+      documented in a new sibling <code>CONTRACT-loop.md</code> that leaves the frozen
+      <code>CONTRACT.md</code> byte-identical.
+    </p>
+
+    <div class="cvt">
+      <div class="col now">
+        <p class="micro">scroll &mdash; seo-video-slicer.package.v1 (FROZEN)</p>
+        <ul>
+          <li><code>schema</code>: <span class="mono">seo-video-slicer.package.v1</span></li>
+          <li><code>player.interaction</code>: <span class="mono">scroll</span></li>
+          <li><code>data-template-id</code>: <span class="mono">seo-video-slicer.scroll.v1</span></li>
+          <li>player: scroll-progress &rarr; frame index</li>
+          <li>gates: G1–G7</li>
+          <li>artifact: frames + <code>index.html</code></li>
+        </ul>
+      </div>
+      <div class="col target">
+        <p class="micro">loop &mdash; seo-video-slicer.loop-package.v1 (NEW)</p>
+        <ul>
+          <li><code>schema</code>: <span class="mono">seo-video-slicer.loop-package.v1</span></li>
+          <li><code>player.interaction</code>: <span class="mono">loop</span></li>
+          <li><code>data-template-id</code>: <span class="mono">seo-video-slicer.loop.v1</span></li>
+          <li>player: <strong>time-based rAF</strong> &rarr; frame index (G4, loop assertions)</li>
+          <li>gates: G1–G7 (adapted) + <strong>G8, G9</strong></li>
+          <li>artifact: frames + <code>index.html</code> + <code>loop.webp</code></li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 class="title" style="margin-top: var(--spacing-xl);">The loop package &mdash; folder + manifest</h3>
+    <div class="tree" aria-label="loop package tree"><span class="dir">&lt;slug&gt;-loop/</span>
+<span class="dir">├── frames/</span>
+│   ├── <span class="file">frame_000.webp</span>          <span class="cm"># zero-padded, contiguous (shared with scroll)</span>
+│   └── <span class="file">… frame_NNN.webp</span>
+├── <span class="file">index.html</span>                  <span class="cm"># auto-advancing rAF player · data-template-id=loop.v1</span>
+├── <span class="star">loop.webp</span>                   <span class="cm"># NEW · animated WebP · Pillow save_all · loop=0</span>
+├── <span class="file">manifest.json</span>               <span class="cm"># loop-package.v1 + loop{} block</span>
+└── <span class="file">README.md</span>                   <span class="cm"># two-tier embed: &lt;img&gt; loop.webp | canvas index.html</span>
+
+<span class="cm">manifest.loop = {</span>
+  <span class="cm">fps: 12, duration_s: 2.5, webp: "loop.webp",</span>
+  <span class="cm">webp_sha256: "&lt;hash of loop.webp&gt;",  // gated by G9</span>
+  <span class="cm">loop_count: 0                           // infinite</span>
+<span class="cm">}                          // the loop block is OUTSIDE the fingerprint</span></div>
+
+    <h3 class="title" style="margin-top: var(--spacing-xl);">Fingerprint &mdash; reused verbatim</h3>
+    <p class="lede" style="font-size: 0.93rem;">
+      The frozen recipe <code>fingerprint(frameBasenames, gsapUrlOrEmpty, templateId)</code> is reused
+      <strong>character-for-character</strong>. For loop: same frames, <code>gsap=""</code> (pure rAF, no
+      GSAP), <code>templateId="seo-video-slicer.loop.v1"</code> &rarr; a <em class="voice">distinct</em>
+      valid sha256 for free, recipe byte-identical between builder and verifier. <code>fingerprint()</code>
+      stays exactly two copies; no third copy, no new recipe.
+    </p>
+
+    <h3 class="title" style="margin-top: var(--spacing-xl);">The gap the fingerprint can't see &mdash; and how G8/G9 close it</h3>
+    <p class="lede" style="font-size: 0.93rem;">
+      <code>fps</code> is a build-time parameter that bakes <code>loop.webp</code>'s bytes. Two loops that
+      differ only in fps share the same 3-input fingerprint &mdash; so a re-encoded or swapped
+      <code>loop.webp</code> would be invisible to G5. We do <em class="voice">not</em> fold fps into the
+      frozen recipe; we add two new gates. Drag the slider:
+    </p>
+
+    <div class="demo" id="g9demo">
+      <div class="ctl">
+        <label for="lfps">loop.webp actually baked at fps</label>
+        <input type="range" id="lfps" min="8" max="24" value="12" step="1">
+        <span class="val">fps = <b id="lfpsV">12</b> &middot; frame duration <b id="ldur">83</b> ms</span>
+      </div>
+      <div class="rows">
+        <div class="drow">
+          <span class="k">fingerprint(frames, "", loop.v1)</span>
+          <span class="v" id="fpVal">3-input recipe — unchanged by fps</span>
+          <span class="tag same" id="fpTag">SAME · G5 passes</span>
+        </div>
+        <div class="drow">
+          <span class="k">loop.webp content sha256</span>
+          <span class="v" id="shaVal">—</span>
+          <span class="tag changed" id="shaTag">tracks fps</span>
+        </div>
+        <div class="drow">
+          <span class="k">manifest.loop.webp_sha256</span>
+          <span class="v" id="mfVal">— (recorded at build: fps 12)</span>
+          <span class="tag same">recorded once</span>
+        </div>
+        <div class="drow">
+          <span class="k">G8 · Σ ANMF dur == frames × perFrameMs</span>
+          <span class="v" id="g8Val">2490 ms == 2490 ms</span>
+          <span class="tag same" id="g8Tag">PASS</span>
+        </div>
+        <div class="drow">
+          <span class="k">G9 · sha(loop.webp) == manifest</span>
+          <span class="v" id="g9Val">match</span>
+          <span class="tag same" id="g9Tag">PASS</span>
+        </div>
+      </div>
+      <p class="verdict" id="g9Verdict"></p>
+      <p class="micro" style="margin-top: var(--spacing-md);">
+        Illustrative sha (a deterministic stand-in, not a real WebP encode). The point is structural: the
+        3-input fingerprint is fps-blind, so loop integrity needs dedicated gates. <strong>G9</strong>
+        re-hashes the baked <code>loop.webp</code> (catches re-encoded bytes); <strong>G8</strong> sums the
+        ANMF frame-durations and binds the total to <code>frames.count &times; perFrameMs</code> (catches a
+        manifest-fps-only edit with the bytes untouched). Together they make
+        <span class="mono">fps &harr; bytes &harr; manifest</span> mutually consistent &mdash; the frozen
+        recipe is never touched. <span class="mono" style="color: var(--ink-muted);">Sum-based (not per-frame) because libwebp coalesces byte-identical consecutive frames into fewer ANMF with summed durations; <code>perFrameMs = floor(1000/fps + 0.5)</code> is pinned identically in the Python encoder and the Node verifier (banker's-rounding parity bug at fps 16).</span>
+      </p>
+    </div>
+
+    <h3 class="title" style="margin-top: var(--spacing-xl);">Loop gates &mdash; <span class="accent">G8/G9 new</span>, G4/G7 adapted</h3>
+    <div class="gates">
+      <div class="gate new"><span class="gid">G8</span><span class="gtxt"><strong>loop.webp structure + fps binding (NEW).</strong> Real animated WebP &mdash; RIFF/WEBP, <code>VP8X</code> with the ANIM flag, an <code>ANIM</code> chunk, and <code>1 &le; ANMF count &le; frames.count</code> (libwebp coalesces identical consecutive frames). Cadence bound by the SUM: <code>Σ(ANMF 24-bit durations) == frames.count × perFrameMs</code>, <code>perFrameMs = floor(1000/fps + 0.5)</code> pinned identically in Python &amp; Node. <code>node:fs</code>, zero-dep.</span></div>
+      <div class="gate new"><span class="gid">G9</span><span class="gtxt"><strong>loop.webp integrity (NEW).</strong> <code>sha256(loop.webp)</code> == <code>manifest.loop.webp_sha256</code> (<code>node:crypto</code>). A re-encode changes the bytes &rarr; FAIL.</span></div>
+      <div class="gate"><span class="gid">G4</span><span class="gtxt"><strong>loop technique check (adapted, presence gate).</strong> cover-fit, DPR, onerror preload, reduced-motion block, <code>data-template-id=loop.v1</code>, and the positive time markers <code>requestAnimationFrame</code> + <code>performance.now()</code>. The time-driven loop is additionally proven in-browser in Phase 0 (regex can't prove a formula).</span></div>
+      <div class="gate"><span class="gid">G7</span><span class="gtxt"><strong>weight (adapted, re-measured from disk).</strong> Hard-fail stays <code>frames.count &gt; 200</code> (and <code>&lt; 1</code>). <code>loop.webp</code> counts toward <code>total_bytes</code>; oversized <code>loop.webp</code> is a soft warning, never a fail.</span></div>
+    </div>
+
+    <h3 class="title" style="margin-top: var(--spacing-xl);">Two-tier delivery (state it, or it reads as redundant weight)</h3>
+    <div class="cvt">
+      <div class="col target">
+        <p class="micro">loop.webp &mdash; zero-JS drop-in</p>
+        <ul>
+          <li><code>&lt;img src="loop.webp" loading="lazy"&gt;</code> &mdash; simplest possible embed.</li>
+          <li><strong>Ignores</strong> <code>prefers-reduced-motion</code> (it's an <code>&lt;img&gt;</code>).</li>
+        </ul>
+      </div>
+      <div class="col now">
+        <p class="micro">index.html (canvas + frames) &mdash; the instrument</p>
+        <ul>
+          <li>DPR-crisp, controllable, <strong>honors reduced-motion</strong> (static hero frame).</li>
+          <li>The tier that satisfies the accessibility rule.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ SPEC SEED ============================ -->
+  <section id="seed">
+    <p class="label eyebrow">Spec seed · this section can become a reviewable spec</p>
+    <h2 class="headline">Decisions, boundaries, interfaces, sequence, acceptance.</h2>
+
+    <h3 class="title">The five decisions (pinned)</h3>
+    <table>
+      <thead><tr><th>#</th><th>Decision</th><th>Chosen</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>MCP runtime / location / dist</td><td>Python + FastMCP at <code>backend/app/mcp/</code>; optional extra <code>seo-video-slicer[mcp]</code>; stdio.</td></tr>
+        <tr><td>2</td><td>Headless CLI</td><td><code>slice &lt;path&gt;</code> auto-detect; <code>--mode</code>, <code>--fps</code>, video-only <code>--start/--end</code>, <code>--out-dir</code>, <code>--json</code>, <code>--no-verify</code> (off by default; CI/MCP always verify; <code>verify:{skipped:true}</code> under <code>--json</code>); CLI exit codes per the spec.</td></tr>
+        <tr><td>3</td><td>Loop contract</td><td>New <code>loop-package.v1</code> + <code>loop.v1</code>; fingerprint reused verbatim; new gates G8/G9.</td></tr>
+        <tr><td>4</td><td>Remotion ingest</td><td>Both video + PNG/JPEG frames (Pillow &rarr; WebP); runnable <code>examples/remotion/</code> + docs recipe.</td></tr>
+        <tr><td>5</td><td>MCP tools</td><td><code>slice_video</code> / <code>slice_frames</code> &rarr; <code>{package_dir, verify, loop_webp?}</code>; + thin CC skill wrapper.</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="title" style="margin-top: var(--spacing-xl);">Ownership boundaries &mdash; Phase-1 lane isolation</h3>
+    <table>
+      <thead><tr><th>Lane</th><th>Owns (writes)</th><th>Does NOT touch</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Loop kernel</strong> (P0)</td><td><code>index.template.loop.html</code>, <code>CONTRACT-loop.md</code>, the mode/schema dispatch + loop branch in <code>build_package.mjs</code>/<code>verify.mjs</code>, <code>backend/app/loop_export.py</code>, loop + golden cases in <code>test-kernel.mjs</code></td><td>scroll path logic; the <code>fingerprint()</code> body</td></tr>
+        <tr><td><strong>Headless CLI</strong></td><td><code>backend/app/slice_cli.py</code>, the <code>slice</code> subcommand in <code>cli.py</code>, CLI tests</td><td>the kernel; the MCP server</td></tr>
+        <tr><td><strong>Packager integration</strong> (P1)</td><td>the <code>mode</code> param (internally bakes <code>loop.webp</code> via <code>loop_export</code>) + return-dict additions (<code>package_dir</code>, <code>loop_webp</code>) in <code>packager.py</code>, packager tests</td><td>the loop primitive (P0 owns it); the player template; the CLI</td></tr>
+        <tr><td><strong>MCP server</strong></td><td><code>backend/app/mcp/</code>, <code>[mcp]</code> extra, the CC skill wrapper, MCP smoke test</td><td><code>slicing</code>/<code>packager</code> internals (imports only)</td></tr>
+        <tr><td><strong>Remotion recipe</strong></td><td><code>examples/remotion/</code>, <code>convert_frames_to_webp</code> in <code>slicing.py</code>, docs recipe</td><td>the kernel; the MCP server</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="title" style="margin-top: var(--spacing-xl);">Public interfaces</h3>
+    <div class="endpoints" aria-label="public interfaces">
+      <div class="row"><span class="m">CLI</span><span class="path">seo-video-slicer slice &lt;path&gt; --mode scroll|loop --fps n [--start s] [--end s] [--quality 82-90] --out-dir d [--slug] [--json] [--no-verify]</span></div>
+      <div class="row"><span class="m">MCP</span><span class="path">slice_video(path, start, end, fps, mode)</span><span class="ret">&rarr; { package_dir, verify:{pass,gates[]}, loop_webp? }</span></div>
+      <div class="row"><span class="m">MCP</span><span class="path">slice_frames(dir, fps, mode)</span><span class="ret">&rarr; { package_dir, verify:{pass,gates[]}, loop_webp? }</span></div>
+      <div class="row"><span class="m">stdio</span><span class="path">python -m app.mcp</span><span class="ret">&rarr; FastMCP over stdio · stdout = JSON-RPC, logs → stderr</span></div>
+    </div>
+
+    <h3 class="title" style="margin-top: var(--spacing-xl);">Data flow</h3>
+    <p class="lede" style="font-size: 0.93rem;">
+      <code>&lt;path&gt;</code> (auto-detect) &rarr; <em>video:</em> <code>extract_preview</code> (ffmpeg) &rarr;
+      <code>finalize_to_webp</code> · <em>frames-dir:</em> <code>convert_frames_to_webp</code> (PNG/JPEG &rarr; WebP)
+      &rarr; <code>build_and_verify(mode)</code> &rarr; <em>loop:</em> <code>loop_export</code> bakes
+      <code>loop.webp</code>, kernel records <code>webp_sha256</code> &rarr; <code>verify.mjs</code> (G1–G9)
+      &rarr; <code>{package_dir, verify, loop_webp?}</code>. One linear path. The <strong>CLI</strong> exits non-zero on a gate fail; the <strong>MCP</strong> tools return <code>verify.pass=false</code> with the failing gates (the tool call still succeeds).
+    </p>
+
+    <h3 class="title" style="margin-top: var(--spacing-xl);">Build sequence &mdash; contract-first workflows</h3>
+    <div class="steps">
+      <div class="step zero"><span class="sn">P0</span><div class="sb"><strong>Loop kernel.</strong> <span>Freeze loop.v1: template + schema/mode dispatch + loop branch (G8/G9, adapted G4, loop README) + CONTRACT-loop.md + loop.webp export + reference player. Encoder spike FIRST (§6.9: one ANMF per frame + exact duration, before building G8). Negative-corruption tests for BOTH templates + a scroll golden-package byte-diff (excl. id/created_at). Then SEE it loop in a browser, zero external requests.</span></div></div>
+      <div class="step"><span class="sn">P1</span><div class="sb"><strong>Parallel lanes.</strong> <span>Four disjoint-file lanes: headless CLI · packager integration (build_and_verify mode, consumes the P0 loop_export) · MCP server · Remotion recipe.</span></div></div>
+      <div class="step"><span class="sn">P2</span><div class="sb"><strong>Integrate &amp; verify.</strong> <span>MCP end-to-end against a REAL Remotion --sequence render; assert verify.mjs passes; smoke CLI both ways × both modes; regression-context grep; make test + CI green.</span></div></div>
+    </div>
+
+    <h3 class="title" style="margin-top: var(--spacing-xl);">Acceptance &mdash; the 5-star bar</h3>
+    <div class="gates">
+      <div class="gate"><span class="gid">A1</span><span class="gtxt"><strong>Contract safety.</strong> Scroll <em>output</em> byte-identical — a golden-package byte-diff (every output file, excl. per-build <code>id</code>/<code>created_at</code>; fingerprint pinned within it) fails on any scroll drift; <code>CONTRACT.md</code> byte-unchanged. (The .mjs files legitimately gain a loop branch.)</span></div>
+      <div class="gate"><span class="gid">A2</span><span class="gtxt"><strong>Loop gates.</strong> Build loop &rarr; verify passes; corrupt frame / sha / ANMF count / ANMF duration &rarr; matching gate fails; editing <code>manifest.loop.fps</code> alone fails G8.</span></div>
+      <div class="gate"><span class="gid">A3</span><span class="gtxt"><strong>Loop player.</strong> Loops offline; zero network; reduced-motion shows a static frame.</span></div>
+      <div class="gate"><span class="gid">A4</span><span class="gtxt"><strong>CLI.</strong> video + frames, scroll + loop produce passing packages; non-zero exit on gate fail; <code>--json</code> shape.</span></div>
+      <div class="gate"><span class="gid">A5</span><span class="gtxt"><strong>MCP + Remotion.</strong> Tools return passing packages over stdio; <code>examples/remotion/</code> renders &amp; slices via <code>make</code> on a clean clone.</span></div>
+      <div class="gate"><span class="gid">A6</span><span class="gtxt"><strong>CI + docs.</strong> <code>make test</code> + CI green; README/recipe at the existing polish bar; no stale context.</span></div>
+    </div>
+
+    <h3 class="title" style="margin-top: var(--spacing-xl);">Non-goals</h3>
+    <div class="nogoals">
+      <div class="ng"><span class="x">&times;</span>Mutating <code>seo-video-slicer.package.v1</code> or its scroll code path.</div>
+      <div class="ng"><span class="x">&times;</span>An in-app animation generator, local LLM, or chat (inherited non-goals).</div>
+      <div class="ng"><span class="x">&times;</span>A loop video editor / GIF studio. Loop = one player + one loop.webp, gated.</div>
+      <div class="ng"><span class="x">&times;</span>Vendoring ffmpeg/node. They stay system prerequisites; <code>mcp</code> is an optional extra.</div>
+      <div class="ng"><span class="x">&times;</span>Folding fps/loop.webp into the frozen fingerprint recipe (G8/G9 instead).</div>
+      <div class="ng"><span class="x">&times;</span>A preview UI in the CLI/MCP path. They are plumbing.</div>
+    </div>
+  </section>
+
+  <!-- ============================ SOURCE ANCHORS ============================ -->
+  <section id="anchors">
+    <p class="label eyebrow">Source anchors</p>
+    <h2 class="headline">What we reuse &mdash; and one false fact we correct.</h2>
+    <p class="lede">
+      This feature reuses production functions, re-verified against source. Edges and claims above are
+      anchored here so no diagram arrow is unsourced.
+    </p>
+
+    <h3 class="title" style="margin-top: var(--spacing-lg);">Reuse map</h3>
+    <table>
+      <thead><tr><th>Use</th><th>From (file:line)</th></tr></thead>
+      <tbody>
+        <tr><td>Frame extraction (ffmpeg, trim, fps)</td><td><span class="ref">slicing.py:43-92</span></td></tr>
+        <tr><td>JPEG→WebP finalize + reindex + resolution</td><td><span class="ref">slicing.py:98-147</span></td></tr>
+        <tr><td>Package assemble + gate (shells kernel)</td><td><span class="ref">packager.py:54-151</span></td></tr>
+        <tr><td>Parse gate output → gates[]</td><td><span class="ref">packager.py:154-186</span></td></tr>
+        <tr><td>Budget constants (200 hard cap, q82–90)</td><td><span class="ref">config.py:64-92</span></td></tr>
+        <tr><td>Fingerprint recipe (reuse verbatim)</td><td><span class="ref">build_package.mjs:36-39</span> · <span class="ref">verify.mjs:22-25</span></td></tr>
+        <tr><td>Template load + data-template-id read</td><td><span class="ref">build_package.mjs:140-164</span></td></tr>
+        <tr><td>Wheel kernel bundling</td><td><span class="ref">scripts/build-wheel.sh:18-25</span></td></tr>
+        <tr><td>CLI entry (UI-only today; add subcommand)</td><td><span class="ref">cli.py:24-74</span></td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="title" style="margin-top: var(--spacing-xl);">Correction &mdash; DO NOT carry forward</h3>
+    <table>
+      <thead><tr><th>False fact in source</th><th>Where</th><th>Truth</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>&ldquo;<code>build_package.mjs</code> &hellip; is how <code>docs/assets/demo.webp</code> was built&rdquo;</td>
+          <td><span class="ref">remotion-companion-kickoff.md:27</span></td>
+          <td>False &mdash; the zero-dep Node kernel only copies frames; it cannot emit an animated WebP. <code>demo.webp</code> was committed as a pre-built binary. The real export is <code>loop_export.py</code> (Pillow <code>save_all</code>), §6.7. <strong>Done:</strong> the kickoff line is corrected.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="lede" style="font-size: 0.9rem; margin-top: var(--spacing-md); color: var(--ink-secondary);">
+      <strong>Gate:</strong> Phase 2 greps the new code for forbidden/stale patterns per <code>CONTRACT.md</code>
+      §7.1 (<code>INPAINT_TELEA</code> outside the fallback, GSAP-studio framing, <code>experience</code>
+      trigger/effect/easing metadata, stale schema/template ids, <code>DEBUG</code>/<code>print</code>) and
+      fails if any leaked into the CLI / MCP / loop kernel.
+    </p>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Spec seed for the <strong>Remotion companion + MCP plugin</strong> &middot; source of truth: <a href="../../specs/remotion-companion-spec.md">docs/specs/remotion-companion-spec.md</a></span>
+    <span>The Dark Instrument &middot; Void-Black canvas &middot; one decisive Electric Blue</span>
+  </div>
+</footer>
+
+<script>
+  // G8/G9 integrity demonstrator — illustrates §6.5: the 3-input fingerprint is fps-blind,
+  // so loop.webp integrity needs dedicated gates (G9 binds the bytes, G8 binds the per-frame
+  // duration to manifest.fps). Pure presentation (no network, no deps). The "sha" is an
+  // illustrative deterministic stand-in, NOT a real WebP encode.
+  (function () {
+    var BUILD_FPS = 12;                       // the fps recorded into the manifest at build
+    var lfps = document.getElementById('lfps');
+    var lfpsV = document.getElementById('lfpsV');
+    var ldur = document.getElementById('ldur');
+    var fpVal = document.getElementById('fpVal');
+    var fpTag = document.getElementById('fpTag');
+    var shaVal = document.getElementById('shaVal');
+    var mfVal = document.getElementById('mfVal');
+    var g8Val = document.getElementById('g8Val');
+    var g8Tag = document.getElementById('g8Tag');
+    var shaTag = document.getElementById('shaTag');
+    var g9Val = document.getElementById('g9Val');
+    var g9Tag = document.getElementById('g9Tag');
+    var g9Verdict = document.getElementById('g9Verdict');
+
+    // tiny deterministic hex stand-in (FNV-1a-ish); labeled illustrative.
+    function pseudoSha(s) {
+      var h = 0x811c9dc5;
+      for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = (h * 0x01000193) >>> 0; }
+      var hex = ('00000000' + h.toString(16)).slice(-8);
+      return hex + hex.split('').reverse().join('') + hex; // pad to a sha-ish width
+    }
+
+    // The frozen 3-input fingerprint never sees fps — constant across the slider.
+    var FP = pseudoSha('frames:30|gsap:|tid:seo-video-slicer.loop.v1');
+    var MANIFEST_SHA = pseudoSha('loop.webp@fps=' + BUILD_FPS);
+
+    var FRAME_N = 30;                          // example/sample-package frame count
+    var perFrameMs = function (fps) { return Math.floor(1000 / fps + 0.5); };  // pinned formula (Node+Python)
+    function render() {
+      var f = +lfps.value;
+      lfpsV.textContent = f;
+      ldur.textContent = perFrameMs(f);
+
+      fpVal.textContent = FP.slice(0, 24) + '…  (frames, "", loop.v1)';
+      mfVal.textContent = MANIFEST_SHA.slice(0, 24) + '…  (recorded at build: fps ' + BUILD_FPS + ')';
+
+      var liveSha = pseudoSha('loop.webp@fps=' + f);
+      shaVal.textContent = liveSha.slice(0, 24) + '…';
+
+      var match = (f === BUILD_FPS);
+      g9Val.textContent = match ? 'match' : 'MISMATCH';
+      g9Tag.textContent = match ? 'PASS' : 'FAIL';
+      g9Tag.className = 'tag ' + (match ? 'same' : 'fail');
+      shaTag.className = 'tag ' + (match ? 'same' : 'changed');
+
+      var builtSum = FRAME_N * perFrameMs(BUILD_FPS);
+      var liveSum = FRAME_N * perFrameMs(f);
+      g8Val.textContent = liveSum + ' ms vs ' + builtSum + ' ms (Σ over ' + FRAME_N + ' frames)';
+      g8Tag.textContent = match ? 'PASS' : 'FAIL';
+      g8Tag.className = 'tag ' + (match ? 'same' : 'fail');
+
+      if (match) {
+        g9Verdict.innerHTML = '<span class="accent">As built (fps ' + BUILD_FPS + ').</span> G5 (fingerprint), ' +
+          'G8 (Σ durations == frames × perFrameMs), and G9 (bytes match recorded sha) all pass — the package is intact.';
+      } else {
+        g9Verdict.innerHTML = '<span class="accent">Re-encoded at fps ' + f + '.</span> The 3-input ' +
+          'fingerprint is <em>unchanged</em> (G5 still green) — it never saw fps. <strong>G9</strong> catches the ' +
+          'changed bytes; <strong>G8</strong> catches the changed cadence — Σ durations no longer equals ' +
+          'frames × perFrameMs. (Editing manifest.loop.fps alone, bytes untouched, would leave G9 green but still fail G8.) ' +
+          'The gap is closed with gates, never by touching the frozen recipe.';
+      }
+    }
+
+    lfps.addEventListener('input', render);
+    render();
+  })();
+</script>
+</body>
+</html>

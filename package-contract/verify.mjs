@@ -27,8 +27,6 @@ function fingerprint(frameBasenames, gsapUrlOrEmpty, templateId) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Frozen constants (single source: CONTRACT.md §1, §3, §4, §5).
 // ─────────────────────────────────────────────────────────────────────────────
-const PACKAGE_SCHEMA = 'seo-video-slicer.package.v1';
-const TEMPLATE_ID    = 'seo-video-slicer.scroll.v1';
 const FRAME_RE       = /^frame_(\d{3})\.webp$/;            // bare basename, 3-digit zero-pad
 const HTML_FRAME_RE  = /\.\/frames\/frame_\d{3}\.webp/g;   // reference form inside index.html
 
@@ -37,8 +35,31 @@ const FRAME_COUNT_HARD_MAX   = 200;            // count > 200 ⇒ G7 FAIL
 const FRAME_COUNT_HARD_MIN   = 1;              // count < 1   ⇒ G7 FAIL (a package always has ≥1 frame)
 const TOTAL_BYTES_SOFT_CAP   = 4 * 1024 * 1024; // ~4 MB total ⇒ WARN only
 const PER_FRAME_SOFT_CAP     = 256 * 1024;      // 256 KB per WebP ⇒ WARN only
+const LOOP_WEBP_SOFT_CAP     = 4 * 1024 * 1024; // ~4 MB loop.webp ⇒ WARN only (§6.8)
 const HERO_LANE_MIN          = 20;
 const HERO_LANE_MAX          = 80;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SCHEMA_CONFIG (spec §6.4b) — verify.mjs READS manifest.schema once and selects
+// a config. The scroll config equals today's frozen PACKAGE_SCHEMA/TEMPLATE_ID
+// constants, so the scroll path is logically unchanged. The loop config swaps
+// the schema/templateId and adds extra gates G8/G9. Gate IDs G1..G9 stay stable
+// (a loop package emits G4 with loop assertions, NOT a separate G4′).
+// ─────────────────────────────────────────────────────────────────────────────
+const SCHEMA_CONFIG = {
+  'seo-video-slicer.package.v1': {
+    schema: 'seo-video-slicer.package.v1',
+    templateId: 'seo-video-slicer.scroll.v1',
+    interaction: 'scroll',
+    extraGates: [],
+  },
+  'seo-video-slicer.loop-package.v1': {
+    schema: 'seo-video-slicer.loop-package.v1',
+    templateId: 'seo-video-slicer.loop.v1',
+    interaction: 'loop',
+    extraGates: ['G8', 'G9'],
+  },
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Resolve package root: argv[2] if given, else cwd.
@@ -48,6 +69,23 @@ const INDEX_HTML = path.join(PKG_ROOT, 'index.html');
 const MANIFEST   = path.join(PKG_ROOT, 'manifest.json');
 const README     = path.join(PKG_ROOT, 'README.md');
 const FRAMES_DIR = path.join(PKG_ROOT, 'frames');
+const LOOP_WEBP  = path.join(PKG_ROOT, 'loop.webp');
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Read manifest.schema ONCE and select the SCHEMA_CONFIG (§6.4b). Unknown /
+// unreadable schema ⇒ default to the scroll config so G5 reports the mismatch
+// (rather than crashing) and the package still fails loudly.
+// ─────────────────────────────────────────────────────────────────────────────
+function selectConfig() {
+  try {
+    const m = JSON.parse(fs.readFileSync(MANIFEST, 'utf8'));
+    if (m && m.schema && SCHEMA_CONFIG[m.schema]) return SCHEMA_CONFIG[m.schema];
+  } catch {
+    /* fall through to scroll default */
+  }
+  return SCHEMA_CONFIG['seo-video-slicer.package.v1'];
+}
+const CFG = selectConfig();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Report harness. Each gate returns { ok, lines:[], notes:[], warns:[] }.
@@ -217,19 +255,30 @@ runGate('G3', 'Self-contained (no external/scratch asset leaks)', (r) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// G4 — required techniques present in index.html:
-//      cover-fit max(...), DPR (devicePixelRatio), preload onerror,
-//      prefers-reduced-motion block, data-template-id="seo-video-slicer.scroll.v1".
+// G4 — required techniques present in index.html (config-keyed presence gate).
+//   scroll: cover-fit max(...), DPR, preload onerror, prefers-reduced-motion,
+//           data-template-id="seo-video-slicer.scroll.v1".
+//   loop (§6.6): the above cover-fit/DPR/onerror/reduced-motion + the loop
+//           data-template-id PLUS the positive TIME-DRIVEN markers —
+//           requestAnimationFrame AND an elapsed-time term (performance.now()).
+//           A regex cannot prove the index formula; G4 proves the time-term is
+//           present, the actual time-driven loop is proven in-browser (§12).
 // ─────────────────────────────────────────────────────────────────────────────
 runGate('G4', 'Required player techniques present', (r) => {
   const html = readText(INDEX_HTML, 'index.html');
+  const tidRe = new RegExp(`data-template-id\\s*=\\s*["']${CFG.templateId.replace(/[.]/g, '\\.')}["']`);
   const checks = [
     ['cover-fit (max( … ))',        /\bmax\s*\(/.test(html)],
     ['DPR scaling (devicePixelRatio)', /devicePixelRatio/.test(html)],
     ['preload onerror handler',     /onerror/i.test(html)],
     ['prefers-reduced-motion block', /prefers-reduced-motion\s*:\s*reduce/i.test(html)],
-    [`data-template-id="${TEMPLATE_ID}"`, new RegExp(`data-template-id\\s*=\\s*["']${TEMPLATE_ID.replace(/[.]/g, '\\.')}["']`).test(html)],
+    [`data-template-id="${CFG.templateId}"`, tidRe.test(html)],
   ];
+  if (CFG.interaction === 'loop') {
+    // Positive time-driven markers — the loop is rAF against elapsed time.
+    checks.push(['requestAnimationFrame loop', /requestAnimationFrame/.test(html)]);
+    checks.push(['elapsed-time term (performance.now())', /performance\.now\s*\(/.test(html)]);
+  }
   const missing = checks.filter(([, present]) => !present).map(([name]) => name);
   if (missing.length) {
     r.ok = false;
@@ -237,7 +286,7 @@ runGate('G4', 'Required player techniques present', (r) => {
     missing.forEach((name) => r.lines.push(`  - ${name}`));
   } else {
     r.ok = true;
-    r.lines.push('all 5 technique markers present');
+    r.lines.push(`all ${checks.length} technique markers present`);
   }
 });
 
@@ -259,9 +308,9 @@ runGate('G5', 'Manifest schema + recomputed fingerprint parity', (r) => {
     return;
   }
   let ok = true;
-  if (manifest.schema !== PACKAGE_SCHEMA) {
+  if (manifest.schema !== CFG.schema) {
     ok = false;
-    r.lines.push(`schema mismatch: expected "${PACKAGE_SCHEMA}", got ${JSON.stringify(manifest.schema)}`);
+    r.lines.push(`schema mismatch: expected "${CFG.schema}", got ${JSON.stringify(manifest.schema)}`);
   }
   const stored = manifest.fingerprint && manifest.fingerprint.value;
   if (!stored) {
@@ -275,9 +324,9 @@ runGate('G5', 'Manifest schema + recomputed fingerprint parity', (r) => {
   const gsapUrlOrEmpty = extractGsapUrl(html);           // shared with G3
   const templateId     = extractTemplateId(html);        // from HTML attribute
 
-  if (templateId !== TEMPLATE_ID) {
+  if (templateId !== CFG.templateId) {
     ok = false;
-    r.lines.push(`data-template-id in index.html is ${JSON.stringify(templateId)}, expected "${TEMPLATE_ID}"`);
+    r.lines.push(`data-template-id in index.html is ${JSON.stringify(templateId)}, expected "${CFG.templateId}"`);
   }
 
   const recomputed = fingerprint(frameBasenames, gsapUrlOrEmpty, templateId);
@@ -357,16 +406,249 @@ runGate('G7', 'Weight budget (count hard-cap; size soft-caps)', (r) => {
     if (sz > PER_FRAME_SOFT_CAP) oversized.push(`${name} (${(sz / 1024).toFixed(0)} KB)`);
   }
 
+  // Loop (§6.8): re-measure loop.webp from disk into the total; an oversized
+  // loop.webp is a WARN that names the file and never changes the exit code.
+  if (CFG.interaction === 'loop' && fs.existsSync(LOOP_WEBP)) {
+    const loopSz = fs.statSync(LOOP_WEBP).size;
+    total += loopSz;
+    if (loopSz > LOOP_WEBP_SOFT_CAP) {
+      r.warns.push(`loop.webp ${(loopSz / 1024 / 1024).toFixed(2)} MB over ~${LOOP_WEBP_SOFT_CAP / 1024 / 1024} MB soft cap`);
+    }
+  }
+
   // Lane context (informational).
   if (count >= HERO_LANE_MIN && count <= HERO_LANE_MAX) r.notes.push(`hero lane (${count} frames, ideal range ${HERO_LANE_MIN}–${HERO_LANE_MAX})`);
   else if (count > HERO_LANE_MAX && count <= FRAME_COUNT_HARD_MAX) r.notes.push(`scrollytelling lane (${count} frames)`);
 
   if (oversized.length) r.warns.push(`${oversized.length} frame(s) over ${PER_FRAME_SOFT_CAP / 1024} KB soft cap: ${oversized.slice(0, 6).join(', ')}${oversized.length > 6 ? ' …' : ''}`);
-  if (total > TOTAL_BYTES_SOFT_CAP) r.warns.push(`total frame bytes ${(total / 1024 / 1024).toFixed(2)} MB over ~${(TOTAL_BYTES_SOFT_CAP / 1024 / 1024)} MB soft cap`);
+  if (total > TOTAL_BYTES_SOFT_CAP) r.warns.push(`total package bytes ${(total / 1024 / 1024).toFixed(2)} MB over ~${(TOTAL_BYTES_SOFT_CAP / 1024 / 1024)} MB soft cap`);
 
   if (ok) r.lines.push(`count ${count} within [${FRAME_COUNT_HARD_MIN}, ${FRAME_COUNT_HARD_MAX}]; total ${(total / 1024 / 1024).toFixed(2)} MB`);
   r.ok = ok;
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Animated-WebP RIFF walker (zero-dep) — shared by G8. Walks top-level RIFF
+// chunks: [FourCC:4][size:LE32][payload:size][pad to even]. Returns the VP8X
+// flags byte, whether an ANIM chunk is present, and the ANMF frame durations
+// (24-bit LE at ANMF-payload offset 12, per the WebP container spec / §6.5 G8).
+// ─────────────────────────────────────────────────────────────────────────────
+function parseAnimatedWebp(buf) {
+  if (buf.length < 12) throw new Error('file too small to be a RIFF/WEBP container');
+  if (buf.toString('ascii', 0, 4) !== 'RIFF') throw new Error('missing RIFF header');
+  if (buf.toString('ascii', 8, 12) !== 'WEBP') throw new Error('missing WEBP form type');
+
+  let vp8xFlags = null;
+  let hasAnim = false;
+  const anmfDurations = [];
+
+  let off = 12;
+  while (off + 8 <= buf.length) {
+    const fourcc = buf.toString('ascii', off, off + 4);
+    const size = buf.readUInt32LE(off + 4);
+    const payloadStart = off + 8;
+    if (payloadStart + size > buf.length) break; // truncated chunk — stop walking
+    if (fourcc === 'VP8X') {
+      vp8xFlags = buf[payloadStart]; // first byte holds the feature flags
+    } else if (fourcc === 'ANIM') {
+      hasAnim = true;
+    } else if (fourcc === 'ANMF') {
+      // ANMF payload layout: X(3) Y(3) W(3) H(3) Duration(3) ... → Duration at +12.
+      const dpo = payloadStart + 12;
+      if (dpo + 3 <= buf.length) {
+        anmfDurations.push(buf[dpo] | (buf[dpo + 1] << 8) | (buf[dpo + 2] << 16));
+      } else {
+        anmfDurations.push(null);
+      }
+    }
+    off = payloadStart + size + (size & 1); // chunks are padded to an even size
+  }
+  return { vp8xFlags, hasAnim, anmfDurations };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// G8 — loop.webp structure + fps binding (LOOP ONLY). loop.webp is a real
+//      ANIMATED WebP (RIFF/WEBP, VP8X with the ANIM flag (0x02), an ANIM chunk).
+//      COALESCING-ROBUST: libwebp encoders (Pillow/ffmpeg/img2webp) merge
+//      byte-identical CONSECUTIVE frames into a single ANMF whose 24-bit-LE
+//      Frame Duration is the SUM of the merged per-frame durations — no flag
+//      disables this (encoder spike §6.9). Coalescing only REDUCES the ANMF
+//      count, so G8 requires 1 <= ANMF count <= frames.count (more ANMF than
+//      frames is impossible/invalid) and binds fps to the bytes via the
+//      INVARIANT duration SUM:
+//        SUM(ANMF durations) == frames.count * perFrameMs(fps)
+//      where perFrameMs(fps) = Math.floor(1000 / fps + 0.5) — the FROZEN
+//      half-up formula, IDENTICAL to loop_export.py (CONTRACT-loop.md §2.1;
+//      JS Math.round and Python round diverge at fps=16, this does not).
+//      A manifest-fps-only edit changes the expected sum; a re-encode or a
+//      single-frame duration tamper changes the actual sum — either fails here
+//      while G9's sha is the byte lock. FAIL ⇒ non-zero.
+// ─────────────────────────────────────────────────────────────────────────────
+if (CFG.extraGates.includes('G8')) {
+  runGate('G8', 'loop.webp animated-WebP structure + fps↔duration binding', (r) => {
+    const manifest = JSON.parse(readText(MANIFEST, 'manifest.json'));
+    const frameCount = manifest && manifest.frames ? manifest.frames.count : undefined;
+    if (!Number.isFinite(frameCount)) {
+      r.ok = false;
+      r.lines.push('manifest.frames.count missing/invalid');
+      return;
+    }
+
+    // ── WHOLE manifest.loop block validation (Finding 2). G8 already consumes
+    //    loop.fps; it now validates EVERY loop field that G1–G9 otherwise never
+    //    reads, so a manifest cannot LIE about duration_s / webp / loop_count and
+    //    still pass. Each is a hard FAIL with a clear message. ──
+    const loop = manifest ? manifest.loop : undefined;
+    if (!loop || typeof loop !== 'object' || Array.isArray(loop)) {
+      r.ok = false;
+      r.lines.push('manifest.loop missing or not an object (a loop package must carry the loop block)');
+      return;
+    }
+
+    // loop.webp — frozen filename "loop.webp" (CONTRACT-loop.md §3). Read the
+    // animated WebP FROM the manifest-declared name so a lie ("missing.webp")
+    // fails either this assert or the subsequent missing-file check.
+    if (loop.webp !== 'loop.webp') {
+      r.ok = false;
+      r.lines.push(`manifest.loop.webp must be "loop.webp", got ${JSON.stringify(loop.webp)}`);
+      return;
+    }
+    const loopWebpPath = path.join(PKG_ROOT, loop.webp);
+
+    // loop.loop_count — frozen 0 (infinite) (CONTRACT-loop.md §3).
+    if (loop.loop_count !== 0) {
+      r.ok = false;
+      r.lines.push(`manifest.loop.loop_count must be 0 (infinite), got ${JSON.stringify(loop.loop_count)}`);
+      return;
+    }
+
+    // loop.fps — finite positive number (also closes the fps gate for loop).
+    const fps = loop.fps;
+    if (!Number.isFinite(fps) || fps <= 0) {
+      r.ok = false;
+      r.lines.push('manifest.loop.fps missing or not a positive number');
+      return;
+    }
+
+    // loop.webp_sha256 — lowercase 64-char hex FORMAT check (G9 still compares
+    // the VALUE against the actual bytes).
+    if (typeof loop.webp_sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(loop.webp_sha256)) {
+      r.ok = false;
+      r.lines.push(`manifest.loop.webp_sha256 must be a lowercase 64-char hex string, got ${JSON.stringify(loop.webp_sha256)}`);
+      return;
+    }
+
+    // loop.duration_s — recomputed the SAME way the builder does
+    //   (build_package.mjs §6.3: loop.duration_s = frames.count / fps),
+    //   compared with a tiny epsilon so legitimate packages pass but 999 fails.
+    if (!Number.isFinite(loop.duration_s)) {
+      r.ok = false;
+      r.lines.push(`manifest.loop.duration_s must be a finite number, got ${JSON.stringify(loop.duration_s)}`);
+      return;
+    }
+    const expectedDurationS = frameCount / fps;
+    if (Math.abs(loop.duration_s - expectedDurationS) > 1e-6) {
+      r.ok = false;
+      r.lines.push(`manifest.loop.duration_s ${loop.duration_s} != frames.count ${frameCount} / fps ${fps} = ${expectedDurationS}`);
+      return;
+    }
+
+    if (!fs.existsSync(loopWebpPath)) {
+      r.ok = false;
+      r.lines.push(`loop.webp not found at ${loopWebpPath}`);
+      return;
+    }
+    const buf = fs.readFileSync(loopWebpPath);
+    const { vp8xFlags, hasAnim, anmfDurations } = parseAnimatedWebp(buf);
+
+    let ok = true;
+    if (vp8xFlags === null) {
+      ok = false;
+      r.lines.push('no VP8X chunk (not an extended-format WebP)');
+    } else if (!(vp8xFlags & 0x02)) {
+      ok = false;
+      r.lines.push(`VP8X present but ANIM flag (0x02) not set (flags byte=0x${vp8xFlags.toString(16)})`);
+    }
+    if (!hasAnim) {
+      ok = false;
+      r.lines.push('no ANIM chunk (not an animated WebP)');
+    }
+
+    // Structural ANMF count bound: coalescing only REDUCES the count, so a
+    // valid loop has 1 <= ANMF count <= frames.count. More ANMF than frames is
+    // impossible from a frames.count-frame bake (a tamper); zero ANMF is not
+    // animated.
+    const anmfCount = anmfDurations.length;
+    if (anmfCount < 1) {
+      ok = false;
+      r.lines.push(`ANMF count 0 (no animation frames)`);
+    } else if (anmfCount > frameCount) {
+      ok = false;
+      r.lines.push(`ANMF count ${anmfCount} > frames.count ${frameCount}`);
+    }
+
+    // A truncated ANMF (null duration) cannot contribute to the sum — fail loud
+    // rather than NaN-propagate.
+    const truncated = [];
+    for (let i = 0; i < anmfDurations.length; i++) {
+      if (anmfDurations[i] === null) truncated.push(`#${i}`);
+    }
+    if (truncated.length) {
+      ok = false;
+      r.lines.push(`${truncated.length} ANMF duration field(s) truncated/unreadable: ${truncated.slice(0, 8).join(', ')}`);
+    }
+
+    // FROZEN half-up per-frame formula (IDENTICAL to loop_export.py). Sum-based
+    // binding survives coalescing: a coalesced frame's duration is the SUM of
+    // the merged per-frame durations, so the TOTAL is invariant.
+    const perFrameMs = Math.floor(1000 / fps + 0.5);
+    const expectedSum = frameCount * perFrameMs;
+    if (!truncated.length) {
+      const actualSum = anmfDurations.reduce((a, d) => a + d, 0);
+      if (actualSum !== expectedSum) {
+        ok = false;
+        r.lines.push(`ANMF duration sum ${actualSum} != frames.count ${frameCount} * ${perFrameMs} = ${expectedSum} ms`);
+      }
+    }
+
+    if (ok) {
+      r.lines.push(`animated WebP: VP8X+ANIM, ${anmfCount} ANMF (<= frames.count ${frameCount}, coalescing-robust), duration sum ${expectedSum} ms == ${frameCount} * ${perFrameMs} (fps ${fps})`);
+    }
+    r.ok = ok;
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// G9 — loop.webp content integrity (LOOP ONLY, NEW). sha256(loop.webp bytes)
+//      == manifest.loop.webp_sha256 via node:crypto. A re-encode (different
+//      bytes) fails here. FAIL ⇒ non-zero.
+// ─────────────────────────────────────────────────────────────────────────────
+if (CFG.extraGates.includes('G9')) {
+  runGate('G9', 'loop.webp content integrity (sha256 == manifest.loop.webp_sha256)', (r) => {
+    if (!fs.existsSync(LOOP_WEBP)) {
+      r.ok = false;
+      r.lines.push(`loop.webp not found at ${LOOP_WEBP}`);
+      return;
+    }
+    const manifest = JSON.parse(readText(MANIFEST, 'manifest.json'));
+    const stored = manifest && manifest.loop ? manifest.loop.webp_sha256 : undefined;
+    if (!stored) {
+      r.ok = false;
+      r.lines.push('manifest.loop.webp_sha256 missing');
+      return;
+    }
+    const actual = crypto.createHash('sha256').update(fs.readFileSync(LOOP_WEBP)).digest('hex');
+    if (actual !== stored) {
+      r.ok = false;
+      r.lines.push('loop.webp sha256 mismatch:');
+      r.lines.push(`  actual:   ${actual}`);
+      r.lines.push(`  manifest: ${stored}`);
+    } else {
+      r.ok = true;
+      r.lines.push(`sha256 matches (${actual.slice(0, 12)}…)`);
+    }
+  });
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Report.

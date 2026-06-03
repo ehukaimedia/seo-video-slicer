@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Loop Animation</title>
+<meta name="description" content="A self-contained WebP loop animation. The frame sequence auto-advances on a time-based requestAnimationFrame loop; reduced-motion shows a single static hero frame.">
+<style>
+  /* Brand-neutral, near-black stage (DESIGN.md Dark Instrument). The frames are
+     the hero. System fonts only. No accent color is imposed on the host —
+     downstream customizes via safe_zones. */
+  :root {
+    --stage: oklch(13% 0.005 270);   /* near-black neutral media stage */
+    --stage-deep: oklch(11% 0.005 270);
+    --ink: oklch(96% 0 0);           /* high-contrast neutral text */
+    --ink-quiet: oklch(72% 0 0);     /* visually-quiet caption ink */
+    --hair: oklch(100% 0 0 / 0.14);  /* restrained hairline */
+    --pad: clamp(16px, 4vw, 40px);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--stage-deep);
+    color: var(--ink);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Visually-hidden description for assistive tech and meaningful page semantics. */
+  .vh {
+    position: absolute;
+    width: 1px; height: 1px;
+    margin: -1px; padding: 0; border: 0;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    overflow: hidden; white-space: nowrap;
+  }
+
+  /* Loop stage: a single full-size box the canvas fills. SAFE_ZONE: loop
+     container size / container height — downstream sets the box; the canvas
+     cover-fits whatever size it is given. */
+  .stage {
+    position: relative;
+    height: 100vh;                 /* SAFE_ZONE: loop container size */
+    width: 100%;
+    display: grid;
+    place-items: center;
+    background: var(--stage);
+    overflow: hidden;
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Thin, restrained preload progress. Fades out when complete. */
+  .progress {
+    position: fixed;
+    left: 0; top: 0;
+    height: 2px;
+    width: 0%;
+    background: var(--ink);
+    opacity: 0.85;
+    transition: width 180ms linear, opacity 420ms ease;
+    z-index: 4;
+    pointer-events: none;
+  }
+  .progress.done { opacity: 0; }
+
+  /* Optional restrained headline overlay. SAFE_ZONE: downstream edits copy here.
+     Default copy is a single neutral placeholder explained in README. */
+  .headline {
+    position: fixed;
+    left: var(--pad);
+    bottom: var(--pad);
+    max-width: min(46ch, 80vw);
+    margin: 0;
+    z-index: 3;
+    font-size: clamp(15px, 2.4vw, 22px);
+    font-weight: 500;
+    line-height: 1.3;
+    letter-spacing: 0.01em;
+    color: var(--ink);
+    text-shadow: 0 1px 16px oklch(0% 0 0 / 0.55);  /* contrast over any frame */
+    pointer-events: none;
+  }
+
+  /* Tasteful no-frames static state (shown when FRAMES is empty / not yet injected). */
+  .empty {
+    position: fixed;
+    inset: 0;
+    display: none;
+    place-items: center;
+    text-align: center;
+    padding: var(--pad);
+    z-index: 2;
+  }
+  .empty[data-on="1"] { display: grid; }
+  .empty p {
+    margin: 0;
+    max-width: 40ch;
+    color: var(--ink-quiet);
+    font-size: clamp(14px, 2.2vw, 18px);
+    line-height: 1.5;
+  }
+  .empty .mark {
+    display: block;
+    width: 48px; height: 48px;
+    margin: 0 auto 18px;
+    border: 1px solid var(--hair);
+    border-radius: 2px;
+  }
+
+  /* Reduced motion: no auto-advance. Pin one static hero frame; hide the
+     progress bar. The piece still reads. */
+  @media (prefers-reduced-motion: reduce) {
+    .progress { display: none; }
+  }
+</style>
+</head>
+<body>
+  <!-- Player root: hosts the canvas + loop stage, carries the template id that
+       anchors the package fingerprint (G4/G5). -->
+  <main id="player" data-template-id="seo-video-slicer.loop.v1">
+    <p class="vh" id="player-desc">
+      Loop animation built from a WebP frame sequence. The frames auto-advance on a time-based loop.
+      If you prefer reduced motion, a single static hero frame is shown instead.
+    </p>
+
+    <div class="progress" id="progress" aria-hidden="true"></div>
+
+    <div class="stage" aria-hidden="true">
+      <canvas id="frame-canvas"></canvas>
+    </div>
+
+    <!-- Optional restrained headline overlay (SAFE_ZONE: headline/overlay copy). -->
+    <p class="headline" id="headline" hidden></p>
+
+    <!-- Tasteful fallback when no frames are present (e.g. uninjected preview). -->
+    <div class="empty" id="empty" role="status">
+      <p><span class="mark" aria-hidden="true"></span>No frames yet. This is the reference loop player; a built package injects its frame sequence here.</p>
+    </div>
+  </main>
+
+  <script>
+  (function () {
+    "use strict";
+
+    // ---- Frame list injection -------------------------------------------------
+    // The packager replaces the token below with the comma-separated, double-quoted
+    // relative frame paths (no brackets, no trailing comma). Uninjected, this is an
+    // empty array and the player renders a tasteful no-frames state instead of crashing.
+    const FRAMES = [/*__SLICER_FRAMES__*/];
+
+    // Loop cadence. The packager injects the build --fps at the token below and
+    // bakes loop.webp at the same fps (bound by G8); the canvas player advances
+    // one frame every (1000/FPS) ms, so both tiers play at one cadence. The
+    // `|| 12` keeps the UNINJECTED template valid (mirrors the FRAMES marker).
+    const FPS = Number("/*__SLICER_FPS__*/") || 12;
+
+    const player   = document.getElementById("player");
+    const canvas   = document.getElementById("frame-canvas");
+    const ctx      = canvas.getContext("2d");
+    const progress = document.getElementById("progress");
+    const empty    = document.getElementById("empty");
+
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // Hero frame index for static / reduced-motion render: the middle frame reads best.
+    const heroIndex = FRAMES.length ? Math.floor((FRAMES.length - 1) / 2) : 0;
+
+    let images = [];        // decoded Image objects, index-aligned to FRAMES
+    let loaded = 0;         // onload + onerror both increment this (404 never freezes)
+    let currentImg = null;  // last successfully drawn image (for resize redraw)
+    let dpr = 1;
+    let lastDrawn = -1;     // last frame index drawn (skip redundant draws)
+    let t0 = 0;             // loop start timestamp (performance.now())
+
+    // ---- No-frames state ------------------------------------------------------
+    if (FRAMES.length === 0) {
+      empty.setAttribute("data-on", "1");
+      progress.classList.add("done");
+      return; // nothing to preload, advance, or draw — leave a calm static state
+    }
+
+    // ---- Canvas: DPR scaling --------------------------------------------------
+    function sizeCanvas() {
+      dpr = Math.max(1, window.devicePixelRatio || 1);
+      const clientW = canvas.clientWidth;
+      const clientH = canvas.clientHeight;
+      canvas.width = clientW * dpr;
+      canvas.height = clientH * dpr;
+      // Setting canvas.width resets the transform, so re-apply DPR scaling here.
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+    }
+
+    // ---- Cover-fit single-canvas render --------------------------------------
+    // scale = max(cw/iw, ch/ih); image centered. No duplicate blurred background.
+    function drawCover(img) {
+      if (!img || !img.naturalWidth) return;
+      const cw = canvas.clientWidth;
+      const ch = canvas.clientHeight;
+      const iw = img.naturalWidth;
+      const ih = img.naturalHeight;
+      const scale = Math.max(cw/iw, ch/ih);
+      const dw = iw * scale;
+      const dh = ih * scale;
+      const dx = (cw - dw) / 2;
+      const dy = (ch - dh) / 2;
+      ctx.clearRect(0, 0, cw, ch);
+      ctx.drawImage(img, dx, dy, dw, dh);
+    }
+
+    function drawIndex(i) {
+      const idx = Math.min(Math.max(i, 0), FRAMES.length - 1);
+      const img = images[idx];
+      if (img && img.naturalWidth) {
+        currentImg = img;
+        drawCover(img);
+      } else if (currentImg) {
+        // Frame not ready (or 404): hold the last good frame, never blank/freeze.
+        drawCover(currentImg);
+      }
+    }
+
+    // ---- Parallel preload with onerror-tolerant counter -----------------------
+    function preloadAll() {
+      images = new Array(FRAMES.length);
+      const onSettled = function () {
+        loaded += 1;
+        const pct = Math.round((loaded / FRAMES.length) * 100);
+        progress.style.width = pct + "%";
+        if (loaded >= FRAMES.length) {
+          progress.classList.add("done");
+        }
+      };
+      for (let i = 0; i < FRAMES.length; i++) {
+        const img = new Image();
+        img.decoding = "async";
+        // First successfully decoded frame paints immediately for a fast first read.
+        img.onload = function () {
+          if (!currentImg) drawIndex(reduceMotion ? heroIndex : 0);
+          onSettled();
+        };
+        img.onerror = onSettled; // a missing frame still advances the counter
+        img.src = FRAMES[i];
+        images[i] = img;
+      }
+    }
+
+    // ---- Time-based rAF loop --------------------------------------------------
+    // frameIndex = floor((elapsed / (1000/FPS)) % frameCount), driven by
+    // requestAnimationFrame against performance.now(). Pure rAF; zero network.
+    function tick() {
+      const elapsed = performance.now() - t0;
+      const msPerFrame = 1000 / FPS;
+      const frameIndex = Math.floor(elapsed / msPerFrame) % FRAMES.length;
+      if (frameIndex !== lastDrawn) {
+        lastDrawn = frameIndex;
+        drawIndex(frameIndex);
+      }
+      window.requestAnimationFrame(tick);
+    }
+
+    function onResize() {
+      sizeCanvas();
+      // Re-apply transform happens in sizeCanvas; redraw current frame so resize
+      // never blanks or distorts the stage.
+      if (reduceMotion) {
+        drawIndex(heroIndex);
+      } else if (currentImg) {
+        drawCover(currentImg);
+      } else {
+        drawIndex(lastDrawn < 0 ? 0 : lastDrawn);
+      }
+    }
+
+    // ---- Init -----------------------------------------------------------------
+    sizeCanvas();
+    preloadAll();
+    window.addEventListener("resize", onResize, { passive: true });
+
+    if (reduceMotion) {
+      // Reduced motion: do NOT start the loop. Render one static hero frame.
+      drawIndex(heroIndex);
+    } else {
+      t0 = performance.now();
+      window.requestAnimationFrame(tick); // start the time-driven loop
+    }
+  })();
+  </script>
+</body>
+</html>

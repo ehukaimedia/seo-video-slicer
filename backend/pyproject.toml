@@ -28,6 +28,12 @@ dependencies = [
 # ffmpeg (media) and node (the frozen package kernel) are SYSTEM prerequisites —
 # they are shelled out to, not importable, so they cannot be pip dependencies.
 
+[project.optional-dependencies]
+# The MCP server (backend/app/mcp/) is an OPTIONAL extra, not a core dep
+# (spec §2, §7.4): `pip install seo-video-slicer[mcp]`. The wheel already ships
+# `app.mcp` via `packages = ["app"]`, so no artifacts/packages change is needed.
+mcp = ["mcp"]
+
 [project.urls]
 Homepage = "https://github.com/ehukaimedia/seo-video-slicer"
 Repository = "https://github.com/ehukaimedia/seo-video-slicer"

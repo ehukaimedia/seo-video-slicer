@@ -32,8 +32,13 @@ data/
 .runtime/
 .tmp-*/
 
+# --- Local render inputs (e.g. Remotion .mp4s used to exercise the slicer) ---
+videos/
+
 # --- Scratch examples: generated test inputs/outputs, not source ---
-examples/
+# Ignore the scratch examples but KEEP the runnable Remotion example (source).
+examples/*
+!examples/remotion/
 
 # --- Exported package zips ---
 *.zip
