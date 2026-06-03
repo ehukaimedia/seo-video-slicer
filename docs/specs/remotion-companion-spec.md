@@ -369,7 +369,7 @@ python -m app.cli slice ./out --fps 12 --mode loop --out-dir ./pkg
 }
 ```
 
-`source.duration_s` for a frames-dir = `frames.count / fps` (= 2.5; a Remotion frames-dir has no inherent source length). `locked_zones` for loop = the v1 set **plus** `"loop.webp bytes"` and `"loop fps"` (both downstream-immutable, gated by G8/G9); `safe_zones` drop `"scroll distance"` and may add `"loop container size"`. Exact arrays frozen in `CONTRACT-loop.md`.
+`source.duration_s` for a frames-dir = `frames.count / fps` (= 2.5; a Remotion frames-dir has no inherent source length). `seo.lcp_safe` for loop is **weight-derived** — `true` iff `total_bytes ≤ ~4 MB` (the §4 soft cap), *not* the frozen literal `true` of scroll; so a heavy full-resolution loop honestly reports `false` (the field is informational/ungated, as in v1). `locked_zones` for loop = the v1 set **plus** `"loop.webp bytes"` and `"loop fps"` (both downstream-immutable, gated by G8/G9); `safe_zones` drop `"scroll distance"` and may add `"loop container size"`. Exact arrays frozen in `CONTRACT-loop.md`.
 
 ### 10.4 Gates — §6.5 (G1–G7 adapted, G8/G9 new).
 

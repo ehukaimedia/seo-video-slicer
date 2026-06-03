@@ -231,6 +231,11 @@ function detectGsapUrl(html) {
 // ---------------------------------------------------------------------------
 // Step 4 — manifest.json (PACKAGE_SCHEMA §1).
 // ---------------------------------------------------------------------------
+// CONTRACT.md §4 soft cap (~4 MB total); mirrors verify.mjs TOTAL_BYTES_SOFT_CAP.
+// Loop packages derive seo.lcp_safe from this (loop-package.v1 is a new schema);
+// scroll keeps the frozen literal `true` (byte-identical golden output).
+const TOTAL_BYTES_SOFT_CAP = 4 * 1024 * 1024;
+
 function buildManifest({
   cfg,
   id,
@@ -276,7 +281,11 @@ function buildManifest({
       safe_zones: cfg.safeZones,
     },
     seo: {
-      lcp_safe: true,
+      // Scroll keeps the frozen literal `true` (byte-identical golden). Loop derives
+      // it from the CWV weight budget — loop-package.v1 is a NEW schema, so the
+      // manifest tells the truth instead of asserting lcp_safe on an over-budget
+      // animated WebP (the real-content 1080p loop is ~6.6 MB). §4 / §6.8.
+      lcp_safe: loopBlock ? totalBytes <= TOTAL_BYTES_SOFT_CAP : true,
       // Task step 4: sum of FRAME bytes (scroll) or FRAME bytes + loop.webp
       // (loop, §6.8). (CONTRACT.md §1.1 phrases this as "all files"; the value
       // is informational and ungated — G7 re-measures bytes independently.)

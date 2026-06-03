@@ -178,6 +178,12 @@ does not trust `manifest.seo.total_bytes`). The only **hard** fails stay `frames
 or `< 1`; an oversized `loop.webp` is a **soft WARN** that names the file and never changes
 the exit code.
 
+**`seo.lcp_safe` is weight-derived for loop** (unlike v1 scroll, where it is the frozen literal
+`true`). The builder sets `lcp_safe = total_bytes <= ~4 MB` (the §4 soft cap). A loop is a *new*
+schema, so the manifest tells the truth: a multi-MB animated WebP (e.g. a full-resolution hero)
+honestly reports `lcp_safe: false` instead of asserting CWV-safety it doesn't have. The field is
+informational and **ungated** (verify.mjs does not check it), exactly as in v1.
+
 ---
 
 ## 7. The loop player — required techniques (`index.template.loop.html`)
