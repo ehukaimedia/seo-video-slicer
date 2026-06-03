@@ -21,6 +21,7 @@ Skips cleanly if node (the frozen kernel) is absent.
 from __future__ import annotations
 
 import asyncio
+import json
 import shutil
 import subprocess
 from pathlib import Path
@@ -63,6 +64,17 @@ def test_slice_frames_scroll(capsys: pytest.CaptureFixture[str]) -> None:
     assert [g["id"] for g in result["verify"]["gates"]] == [f"G{i}" for i in range(1, 8)]
     assert result["loop_webp"] is None
     assert Path(result["package_dir"]).is_dir()  # mkdtemp: OUTLIVES the call.
+
+
+@requires_node
+def test_slice_frames_max_width_updates_manifest_resolution(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    result = slice_frames(dir=str(_SAMPLE_FRAMES), fps=12, mode="scroll", max_width=64)
+    assert capsys.readouterr().out == "", "stdout is reserved for JSON-RPC"
+    assert result["verify"]["pass"] is True
+    manifest = json.loads((Path(result["package_dir"]) / "manifest.json").read_text())
+    assert manifest["source"]["resolution"] == "64x36"
 
 
 @requires_node
@@ -199,3 +211,19 @@ def test_non_positive_fps_returns_structured_error(
         assert set(result) == {"error"}
         assert set(result["error"]) == {"code", "message"}
         assert result["error"]["code"] == "fps must be a positive number"
+
+
+@pytest.mark.parametrize("bad_width", [0, -1, "abc"])
+def test_invalid_max_width_returns_structured_error(
+    bad_width: object, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Bad max_width is a NON-gate failure caught into the {error} shape."""
+    for tool, kwargs in (
+        (slice_frames, {"dir": str(_SAMPLE_FRAMES)}),
+        (slice_video, {"path": str(_SAMPLE_FRAMES)}),
+    ):
+        result = tool(fps=12, mode="scroll", max_width=bad_width, **kwargs)  # type: ignore[arg-type]
+        assert capsys.readouterr().out == "", "stdout is reserved for JSON-RPC"
+        assert set(result) == {"error"}
+        assert set(result["error"]) == {"code", "message"}
+        assert result["error"]["code"] == "max_width must be a positive integer"

@@ -38,7 +38,7 @@ from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 
 from ..config import MAX_SLICE_SECONDS, WEBP_QUALITY
-from ..errors import ApiError, validate_fps
+from ..errors import ApiError, validate_fps, validate_max_width
 from .. import packager, slicing
 
 log = logging.getLogger("svs.mcp")
@@ -158,6 +158,7 @@ def slice_video(
     end: float | None = None,
     fps: float = 12,
     mode: str = "scroll",
+    max_width: int | None = None,
 ) -> dict:
     """Slice a video file into a verified WebP package (spec §7.3).
 
@@ -169,6 +170,8 @@ def slice_video(
             ffmpeg stops at EOF, so a too-long clip is bounded by the source).
         fps: Effective frames-per-second for extraction (drives the loop cadence).
         mode: ``"scroll"`` (default) or ``"loop"``.
+        max_width: Optional frame width cap in pixels. Preserves aspect ratio and
+            never upscales; use ``1280`` for web-light heroes.
 
     Returns:
         ``{package_dir, verify: {pass, gates[]}, loop_webp}`` on a build (a gate
@@ -183,6 +186,7 @@ def slice_video(
         # Front-door fps guard (spec §7.3): a non-positive/non-finite fps is a non-gate
         # failure → {error} shape. Validated before path/ffmpeg work (no video needed).
         validate_fps(fps)
+        width_cap = validate_max_width(max_width)
         video = _validate_input_path(path, expect="file")
         begin = start if start is not None else 0.0
         finish = end if end is not None else begin + MAX_SLICE_SECONDS
@@ -191,7 +195,9 @@ def slice_video(
             scratch_path = Path(scratch)
             preview_dir = scratch_path / "preview"
             slice_dir = scratch_path / "slice"
-            slicing.extract_preview(video, preview_dir, begin, finish, fps)
+            slicing.extract_preview(
+                video, preview_dir, begin, finish, fps, max_width=width_cap
+            )
             _basenames, resolution = slicing.finalize_to_webp(
                 preview_dir, slice_dir, excluded=[], quality=WEBP_QUALITY
             )
@@ -203,7 +209,9 @@ def slice_video(
 
 
 @mcp.tool()
-def slice_frames(dir: str, fps: float = 12, mode: str = "scroll") -> dict:
+def slice_frames(
+    dir: str, fps: float = 12, mode: str = "scroll", max_width: int | None = None
+) -> dict:
     """Slice a frames directory (Remotion ``--sequence``) into a verified package.
 
     Args:
@@ -212,6 +220,8 @@ def slice_frames(dir: str, fps: float = 12, mode: str = "scroll") -> dict:
         fps: Effective frames-per-second (sets the loop cadence; a frames-dir has
             no inherent source length, so ``duration_s = frame_count / fps``).
         mode: ``"scroll"`` (default) or ``"loop"``.
+        max_width: Optional frame width cap in pixels. Preserves aspect ratio and
+            never upscales; use ``1280`` for web-light heroes.
 
     Returns:
         ``{package_dir, verify: {pass, gates[]}, loop_webp}`` on a build (a gate
@@ -226,12 +236,13 @@ def slice_frames(dir: str, fps: float = 12, mode: str = "scroll") -> dict:
         # Front-door fps guard (spec §7.3): a non-positive/non-finite fps is a non-gate
         # failure → {error} shape. Validated before path/convert work (no frames needed).
         validate_fps(fps)
+        width_cap = validate_max_width(max_width)
         frames_dir = _validate_input_path(dir, expect="dir")
         slug = packager.sanitize_slug(None, frames_dir.name)
         with tempfile.TemporaryDirectory(prefix=_SCRATCH_PREFIX) as scratch:
             slice_dir = Path(scratch) / "slice"
             _basenames, resolution = slicing.convert_frames_to_webp(
-                frames_dir, slice_dir, quality=WEBP_QUALITY
+                frames_dir, slice_dir, quality=WEBP_QUALITY, max_width=width_cap
             )
             return _build_from_slice(
                 slice_dir, slug, fps, mode, resolution, origin="mcp:slice_frames"

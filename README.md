@@ -56,14 +56,6 @@ Drop it into `public/`, embed the iframe (or adapt the player into a component),
 
 WebP frame sequences are **LCP‑safe, lazy‑loadable, and CLS‑free** — a fraction of the weight of shipping video or a heavy JS animation library. A typical 10s hero clip lands around **40–60 frames / ~2 MB**. The package is engineered to *help* Core Web Vitals, not hurt them.
 
-## Screenshots
-
-| Library (manage your slices & packages) | Slicer (dark grading studio) |
-|---|---|
-| ![Dashboard](docs/assets/dashboard.png) | ![Slicer](docs/assets/slicer.png) |
-
-A dark, technical instrument: Void‑Black canvas, one Electric‑Blue accent, frames graded against neutral darkness (the Premiere/Resolve standard).
-
 ## Quickstart
 
 🔴 **Live demo:** watch a real exported package animate at **[ehukaimedia.github.io/seo-video-slicer](https://ehukaimedia.github.io/seo-video-slicer/)** — a static page running the actual scroll-player (the slicer itself stays local).
