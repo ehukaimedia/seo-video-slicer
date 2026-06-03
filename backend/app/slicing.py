@@ -13,6 +13,7 @@ inpaints and never shells out to the kernel.
 from __future__ import annotations
 
 import logging
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -35,6 +36,117 @@ _WATERMARK_MARGIN = 80
 
 #: OpenCV threshold for the contour/threshold auto-crop (source used 30).
 _AUTOCROP_THRESH = 30
+
+#: Frame-source globs for :func:`convert_frames_to_webp` (broad; also matches the
+#: legacy ``frame_*`` and Remotion's ``element-NNNN`` default — spec §8.2).
+_FRAME_SRC_GLOBS = ("*.png", "*.jpg", "*.jpeg", "*.webp")
+
+#: Trailing-integer extractor — the LAST run of digits in a basename (stem). Used
+#: to sort Remotion's ``element-10`` AFTER ``element-2`` (a naive lexicographic
+#: sort breaks; spec §8.2). A file with no trailing integer is an error.
+_TRAILING_INT_RE = re.compile(r"(\d+)(?!.*\d)")
+
+
+def _trailing_int(stem: str) -> int | None:
+    """Return the last run of digits in ``stem`` as an int, or ``None`` if none."""
+    match = _TRAILING_INT_RE.search(stem)
+    return int(match.group(1)) if match else None
+
+
+# ---------------------------------------------------------------------------
+# Remotion / frames-dir ingest — arbitrary PNG/JPEG/WebP → contiguous WebP (§8.2).
+# ---------------------------------------------------------------------------
+def convert_frames_to_webp(
+    src_dir: Path,
+    dst_dir: Path,
+    quality: int = WEBP_QUALITY,
+) -> tuple[list[str], str]:
+    """Convert an arbitrary frames dir → contiguous ``frame_NNN.webp`` (spec §8.2).
+
+    Globs ``*.png``/``*.jpg``/``*.jpeg``/``*.webp`` (broad; also matches the legacy
+    ``frame_*`` and Remotion's ``element-NNNN`` default), sorts **numerically by the
+    trailing integer** in each filename so ``element-2`` precedes ``element-10`` (a
+    naive lexicographic sort breaks), and renumbers to a contiguous
+    ``frame_000.webp`` sequence (3-digit, starting at 000 regardless of the source's
+    first index) via the existing Pillow primitive
+    (``Image.open().convert("RGB").save("WEBP", quality, method=6)``).
+
+    Returns ``(webp_basenames, "WIDTHxHEIGHT")``. Raises 422 on an empty/usable-frame-
+    free dir, any file whose name carries no trailing integer to order on, or an
+    ambiguous set where two source files share the same trailing integer (no
+    consistent ordering); 500 on a conversion failure.
+    """
+    if not src_dir.is_dir():
+        raise ApiError(404, "frames dir not found", str(src_dir))
+
+    sources: list[Path] = []
+    for pattern in _FRAME_SRC_GLOBS:
+        sources.extend(src_dir.glob(pattern))
+    # De-dupe (a glob can't, but be defensive against case-fold collisions) and drop
+    # any directory matches.
+    sources = sorted({p for p in sources if p.is_file()}, key=lambda p: p.name)
+    if not sources:
+        raise ApiError(
+            422,
+            "no usable frames",
+            f"no *.png/*.jpg/*.jpeg/*.webp in {src_dir}",
+        )
+
+    keyed: list[tuple[int, Path]] = []
+    unordered: list[str] = []
+    by_index: dict[int, list[str]] = {}
+    for path in sources:
+        index = _trailing_int(path.stem)
+        if index is None:
+            unordered.append(path.name)
+        else:
+            keyed.append((index, path))
+            by_index.setdefault(index, []).append(path.name)
+    if unordered:
+        raise ApiError(
+            422,
+            "unorderable frame names",
+            "no trailing integer to sort on: " + ", ".join(sorted(unordered)[:10]),
+        )
+
+    # Reject ambiguous ingest: when more than one source file maps to the same
+    # trailing integer there is no consistent ordering (e.g. element-1.png and
+    # other-1.jpg both index 1) — error instead of silently emitting two frames.
+    collisions = [(index, names) for index, names in by_index.items() if len(names) > 1]
+    if collisions:
+        collisions.sort(key=lambda item: item[0])
+        groups = "; ".join(
+            f"index {index}: {', '.join(sorted(names))}" for index, names in collisions
+        )
+        raise ApiError(422, "ambiguous frame names", f"duplicate trailing index — {groups}")
+
+    # Numeric sort by the trailing integer (name as a stable tiebreak).
+    keyed.sort(key=lambda item: (item[0], item[1].name))
+
+    dst_dir.mkdir(parents=True, exist_ok=True)
+    written: list[str] = []
+    resolution = "0x0"
+    for new_index, (_src_index, src) in enumerate(keyed):
+        dst = dst_dir / f"frame_{new_index:03d}.webp"
+        try:
+            with Image.open(src) as img:
+                rgb = img.convert("RGB")
+                rgb.save(dst, "WEBP", quality=quality, method=6)
+                if new_index == 0:
+                    resolution = f"{rgb.width}x{rgb.height}"
+        except (OSError, ValueError) as exc:
+            log.error("frames->WebP conversion failed for %s: %s", src.name, exc)
+            raise ApiError(500, "WebP conversion failure", str(exc)) from exc
+        written.append(dst.name)
+
+    log.info(
+        "convert_frames_to_webp: %d source frame(s) -> %d WebP at q%d (%s)",
+        len(keyed),
+        len(written),
+        quality,
+        resolution,
+    )
+    return written, resolution
 
 
 # ---------------------------------------------------------------------------

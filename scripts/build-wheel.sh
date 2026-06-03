@@ -21,7 +21,9 @@ mkdir -p backend/app/_kernel
 cp package-contract/build_package.mjs \
    package-contract/verify.mjs \
    package-contract/index.template.html \
+   package-contract/index.template.loop.html \
    package-contract/CONTRACT.md \
+   package-contract/CONTRACT-loop.md \
    backend/app/_kernel/
 
 echo "==> building the wheel"

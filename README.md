@@ -121,6 +121,10 @@ cd backend && SVS_PORT=8000 ../.venv/bin/python -m uvicorn app.main:app --host 0
 
 The package layout, the `index.html` player techniques (cover‑fit single canvas, DPR scaling, parallel preload, `prefers-reduced-motion`, a stable `data-template-id`), the `manifest.json` schema, the fingerprint recipe, and the seven verify gates are **frozen** in [`package-contract/CONTRACT.md`](package-contract/CONTRACT.md). The packager and `verify.mjs` are built to it — and the kernel is covered by negative‑corruption tests (break a frame, leak a URL, tamper the fingerprint → the matching gate fails).
 
+### Use with Remotion (render → slice → embed)
+
+Render motion with [Remotion](https://www.remotion.dev/), then slice the PNG sequence into a web‑ready package — `Remotion → seo-video-slicer → any site`. The runnable [`examples/remotion/`](examples/remotion/) project does it in three commands (`make setup` · `make render-sequence` · `make slice-package`); the slicer's frames‑dir ingest accepts both Remotion's default `element-NNNN.png` and the cleaner `frame_NNN` naming. See the [Remotion recipe](docs/remotion-recipe.md) for the full flow and the two‑tier embed (`loop.webp` `<img>` vs the reduced‑motion‑aware canvas `index.html`).
+
 ## Tech stack
 
 - **Backend** — Python · FastAPI · ffmpeg · OpenCV · Pillow. Serves the built UI on a single process.
@@ -134,7 +138,8 @@ The package layout, the `index.html` player techniques (cover‑fit single canva
 backend/app/        FastAPI: upload, slice, crop, two-tier erase, packager, share, management
 frontend/src/       the "Dark Instrument" slicer UI
 package-contract/   the frozen package kernel (CONTRACT.md, player template, verify.mjs, build_package.mjs)
-docs/               spec, plan, architecture playground, assets
+examples/remotion/  runnable Remotion -> slice -> embed example (render a PNG sequence, package it)
+docs/               spec, plan, architecture playground, assets, the Remotion recipe
 DESIGN.md           the design system of record ("The Dark Instrument")
 PRODUCT.md          who it's for and why
 ```
