@@ -27,6 +27,12 @@ from pathlib import Path
 
 import pytest
 
+# The MCP server depends on the OPTIONAL ``[mcp]`` extra. Skip this whole module
+# cleanly when it isn't installed (e.g. a contributor who ran a plain
+# ``pip install -e backend`` / ``make test`` without the extra) rather than failing
+# collection with a hard ImportError.
+pytest.importorskip("mcp", reason="optional [mcp] extra not installed (pip install 'seo-video-slicer[mcp]')")
+
 from backend.app import packager
 from backend.app.mcp.server import mcp, slice_frames, slice_video
 

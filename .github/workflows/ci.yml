@@ -36,6 +36,9 @@ jobs:
           # and intentionally unpinned in requirements.txt. CI has no such packages,
           # so install the headless OpenCV wheel + Pillow here for the app to import.
           pip install opencv-python-headless pillow
+          # The MCP server is an OPTIONAL extra (seo-video-slicer[mcp]); install it so
+          # the MCP tools are exercised in CI. (test_mcp_server.py skips if it's absent.)
+          pip install mcp
 
       - name: Run backend tests
         working-directory: backend
