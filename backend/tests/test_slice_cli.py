@@ -271,6 +271,29 @@ def test_path_traversal_rejected_exit2(
     assert _json_stdout(out)["error"]["code"]
 
 
+@pytest.mark.parametrize("bad_fps", ["0", "-1", "nan"])
+def test_non_positive_fps_exit2_error_shape(
+    bad_fps: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A non-positive/non-finite --fps is a hard input error: exit 2, {error}, no package.
+
+    No node needed — the front-door fps guard fires before any extract/build, so the
+    degenerate fps=0/-1/NaN that used to bake a verified ``duration_s=0`` package now
+    short-circuits to the §5.3 code-2 / §10.2 ``{error:{code,message}}`` shape.
+    """
+    out_dir = tmp_path / "pkg"
+    code, out, _err = _run(
+        [str(_SAMPLE_FRAMES), "--mode", "scroll", "--fps", bad_fps,
+         "--out-dir", str(out_dir), "--json"],
+        capsys,
+    )
+    assert code == 2
+    obj = _json_stdout(out)
+    assert set(obj.keys()) == {"error"}
+    assert obj["error"]["code"] == "fps must be a positive number"
+    assert not (out_dir / "manifest.json").exists()  # no package produced
+
+
 @requires_node
 def test_loop_over_cap_exit2_fail_fast(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]

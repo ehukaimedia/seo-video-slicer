@@ -177,3 +177,25 @@ def test_invalid_mode_returns_structured_error(
     assert capsys.readouterr().out == "", "stdout is reserved for JSON-RPC"
     assert set(result) == {"error"}
     assert result["error"]["code"] == "invalid mode"
+
+
+@pytest.mark.parametrize("bad_fps", [0, -1, float("nan")])
+def test_non_positive_fps_returns_structured_error(
+    bad_fps: float, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A non-positive/non-finite fps is a NON-gate failure caught into the {error} shape.
+
+    The guard fires BEFORE path validation, so neither tool needs a real input on
+    disk — a fps=0/-1/NaN that used to flow into a verified ``duration_s=0`` package
+    now short-circuits to ``{error:{code,message}}`` with no stdout leak (and no
+    exception escaping).
+    """
+    for tool, kwargs in (
+        (slice_frames, {"dir": str(_SAMPLE_FRAMES)}),
+        (slice_video, {"path": str(_SAMPLE_FRAMES)}),
+    ):
+        result = tool(fps=bad_fps, mode="scroll", **kwargs)
+        assert capsys.readouterr().out == "", "stdout is reserved for JSON-RPC"
+        assert set(result) == {"error"}
+        assert set(result["error"]) == {"code", "message"}
+        assert result["error"]["code"] == "fps must be a positive number"

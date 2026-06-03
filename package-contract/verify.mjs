@@ -486,26 +486,79 @@ function parseAnimatedWebp(buf) {
 // ─────────────────────────────────────────────────────────────────────────────
 if (CFG.extraGates.includes('G8')) {
   runGate('G8', 'loop.webp animated-WebP structure + fps↔duration binding', (r) => {
-    if (!fs.existsSync(LOOP_WEBP)) {
-      r.ok = false;
-      r.lines.push(`loop.webp not found at ${LOOP_WEBP}`);
-      return;
-    }
     const manifest = JSON.parse(readText(MANIFEST, 'manifest.json'));
     const frameCount = manifest && manifest.frames ? manifest.frames.count : undefined;
-    const fps = manifest && manifest.loop ? manifest.loop.fps : undefined;
     if (!Number.isFinite(frameCount)) {
       r.ok = false;
       r.lines.push('manifest.frames.count missing/invalid');
       return;
     }
+
+    // ── WHOLE manifest.loop block validation (Finding 2). G8 already consumes
+    //    loop.fps; it now validates EVERY loop field that G1–G9 otherwise never
+    //    reads, so a manifest cannot LIE about duration_s / webp / loop_count and
+    //    still pass. Each is a hard FAIL with a clear message. ──
+    const loop = manifest ? manifest.loop : undefined;
+    if (!loop || typeof loop !== 'object' || Array.isArray(loop)) {
+      r.ok = false;
+      r.lines.push('manifest.loop missing or not an object (a loop package must carry the loop block)');
+      return;
+    }
+
+    // loop.webp — frozen filename "loop.webp" (CONTRACT-loop.md §3). Read the
+    // animated WebP FROM the manifest-declared name so a lie ("missing.webp")
+    // fails either this assert or the subsequent missing-file check.
+    if (loop.webp !== 'loop.webp') {
+      r.ok = false;
+      r.lines.push(`manifest.loop.webp must be "loop.webp", got ${JSON.stringify(loop.webp)}`);
+      return;
+    }
+    const loopWebpPath = path.join(PKG_ROOT, loop.webp);
+
+    // loop.loop_count — frozen 0 (infinite) (CONTRACT-loop.md §3).
+    if (loop.loop_count !== 0) {
+      r.ok = false;
+      r.lines.push(`manifest.loop.loop_count must be 0 (infinite), got ${JSON.stringify(loop.loop_count)}`);
+      return;
+    }
+
+    // loop.fps — finite positive number (also closes the fps gate for loop).
+    const fps = loop.fps;
     if (!Number.isFinite(fps) || fps <= 0) {
       r.ok = false;
       r.lines.push('manifest.loop.fps missing or not a positive number');
       return;
     }
 
-    const buf = fs.readFileSync(LOOP_WEBP);
+    // loop.webp_sha256 — lowercase 64-char hex FORMAT check (G9 still compares
+    // the VALUE against the actual bytes).
+    if (typeof loop.webp_sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(loop.webp_sha256)) {
+      r.ok = false;
+      r.lines.push(`manifest.loop.webp_sha256 must be a lowercase 64-char hex string, got ${JSON.stringify(loop.webp_sha256)}`);
+      return;
+    }
+
+    // loop.duration_s — recomputed the SAME way the builder does
+    //   (build_package.mjs §6.3: loop.duration_s = frames.count / fps),
+    //   compared with a tiny epsilon so legitimate packages pass but 999 fails.
+    if (!Number.isFinite(loop.duration_s)) {
+      r.ok = false;
+      r.lines.push(`manifest.loop.duration_s must be a finite number, got ${JSON.stringify(loop.duration_s)}`);
+      return;
+    }
+    const expectedDurationS = frameCount / fps;
+    if (Math.abs(loop.duration_s - expectedDurationS) > 1e-6) {
+      r.ok = false;
+      r.lines.push(`manifest.loop.duration_s ${loop.duration_s} != frames.count ${frameCount} / fps ${fps} = ${expectedDurationS}`);
+      return;
+    }
+
+    if (!fs.existsSync(loopWebpPath)) {
+      r.ok = false;
+      r.lines.push(`loop.webp not found at ${loopWebpPath}`);
+      return;
+    }
+    const buf = fs.readFileSync(loopWebpPath);
     const { vp8xFlags, hasAnim, anmfDurations } = parseAnimatedWebp(buf);
 
     let ok = true;

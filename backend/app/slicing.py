@@ -72,8 +72,9 @@ def convert_frames_to_webp(
     (``Image.open().convert("RGB").save("WEBP", quality, method=6)``).
 
     Returns ``(webp_basenames, "WIDTHxHEIGHT")``. Raises 422 on an empty/usable-frame-
-    free dir or any file whose name carries no trailing integer to order on; 500 on a
-    conversion failure.
+    free dir, any file whose name carries no trailing integer to order on, or an
+    ambiguous set where two source files share the same trailing integer (no
+    consistent ordering); 500 on a conversion failure.
     """
     if not src_dir.is_dir():
         raise ApiError(404, "frames dir not found", str(src_dir))
@@ -93,18 +94,31 @@ def convert_frames_to_webp(
 
     keyed: list[tuple[int, Path]] = []
     unordered: list[str] = []
+    by_index: dict[int, list[str]] = {}
     for path in sources:
         index = _trailing_int(path.stem)
         if index is None:
             unordered.append(path.name)
         else:
             keyed.append((index, path))
+            by_index.setdefault(index, []).append(path.name)
     if unordered:
         raise ApiError(
             422,
             "unorderable frame names",
             "no trailing integer to sort on: " + ", ".join(sorted(unordered)[:10]),
         )
+
+    # Reject ambiguous ingest: when more than one source file maps to the same
+    # trailing integer there is no consistent ordering (e.g. element-1.png and
+    # other-1.jpg both index 1) — error instead of silently emitting two frames.
+    collisions = [(index, names) for index, names in by_index.items() if len(names) > 1]
+    if collisions:
+        collisions.sort(key=lambda item: item[0])
+        groups = "; ".join(
+            f"index {index}: {', '.join(sorted(names))}" for index, names in collisions
+        )
+        raise ApiError(422, "ambiguous frame names", f"duplicate trailing index — {groups}")
 
     # Numeric sort by the trailing integer (name as a stable tiebreak).
     keyed.sort(key=lambda item: (item[0], item[1].name))

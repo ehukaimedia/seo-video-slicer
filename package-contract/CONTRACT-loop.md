@@ -235,9 +235,13 @@ separate `G4′` — so `packager.parse_verify_output` and acceptance key on a s
   `Iframe`/`React`/`Vanilla` headings **plus** the two-tier `<img src="loop.webp">` section.
 - **G7 — weight** (re-measured from disk): re-measures all package bytes incl. `loop.webp`.
   Hard fails unchanged: `frames.count > 200` **or** `< 1`. Oversized `loop.webp` = **WARN**.
-- **G8 — loop.webp structure + fps binding** (NEW, **coalescing-robust**): `loop.webp`
-  exists and is a real **animated** WebP — RIFF/WEBP, a `VP8X` chunk with the `ANIM` flag
-  (`0x02`), an `ANIM` chunk, and a frame-chunk (`ANMF`) count in the range
+- **G8 — loop.webp structure + fps binding + whole-`loop`-block validation** (NEW,
+  **coalescing-robust**): first validates the ENTIRE `manifest.loop` block (§3.1 below) —
+  G8 already consumed `loop.fps`, so it now also gates `loop.webp`, `loop.loop_count`,
+  `loop.webp_sha256` (format), and `loop.duration_s`, closing the gap where a manifest could
+  **lie** about a loop field that no other gate reads. Then asserts `loop.webp` (read from the
+  manifest-declared name) is a real **animated** WebP — RIFF/WEBP, a `VP8X` chunk with the
+  `ANIM` flag (`0x02`), an `ANIM` chunk, and a frame-chunk (`ANMF`) count in the range
   `1 <= count <= manifest.frames.count`. The fps↔bytes binding is the **duration SUM**:
   `SUM(ANMF Frame Durations) == manifest.frames.count * perFrameMs(fps)` (§2.1 formula). This
   **binds fps to the baked bytes**: a manifest-fps-only edit changes the expected sum; a
@@ -248,7 +252,28 @@ separate `G4′` — so `packager.parse_verify_output` and acceptance key on a s
   manifest.loop.webp_sha256` via `node:crypto`. A re-encode (different bytes) fails here.
   FAIL ⇒ non-zero.
 
-### 8.1 The G8 ANMF-duration binding (exact layout + coalescing)
+### 8.1 G8 validates the WHOLE `loop` block (manifest-lie closure)
+
+The frame fingerprint (§2) does **not** cover the `loop` block, and G9 only consumes
+`loop.webp_sha256`. Without further gating, a manifest could **lie** about `loop.duration_s`,
+`loop.webp` (filename), or `loop.loop_count` and still pass G1–G9 — the physical `loop.webp`
+was always read from the package root regardless of the manifest. G8 (which already consumed
+`loop.fps`) now validates the **entire** `loop` block as its first step, each a hard FAIL with
+a clear message:
+
+| Field | Rule enforced by G8 |
+|---|---|
+| `manifest.loop` | present and a (non-array) object — a loop package must carry the block. |
+| `loop.webp` | **exactly** `"loop.webp"` (the frozen filename); the animated WebP is then read **from this manifest-declared name**, so a lie like `"missing.webp"` fails either this assert or the missing-file check. |
+| `loop.loop_count` | **exactly** `0` (infinite). |
+| `loop.fps` | a finite number `> 0` (also the fps gate for loop). |
+| `loop.webp_sha256` | a **lowercase 64-char hex** string (format only — G9 still compares the value against the actual bytes). |
+| `loop.duration_s` | a finite number `≈ frames.count / loop.fps` — recomputed **the same way the builder computes it** (`build_package.mjs` §6.3: `duration_s = frameCount / fps`) and compared with epsilon `abs(stored − recomputed) <= 1e-6`, so a legitimate package passes but `999` fails. |
+
+These checks live **only** in the loop branch (gated on `schema == loop-package.v1`). The scroll
+path and the `fingerprint()` body are byte-untouched; G9's byte-lock logic is unchanged.
+
+### 8.2 The G8 ANMF-duration binding (exact layout + coalescing)
 
 `loop.webp` is walked as top-level RIFF chunks `[FourCC:4][size:LE32][payload:size][pad to
 even]`. For each `ANMF` chunk the payload layout begins
@@ -280,7 +305,7 @@ Empirically confirmed on real frames: 30 distinct frames → 30 ANMF, sum `2490`
 sequence with 3 byte-identical leading frames → **3 ANMF** (`[249, 83, 83]`), sum still
 `5 * 83 = 415` for a 5-frame variant. The sum is invariant under coalescing.
 
-### 8.2 Closure summary
+### 8.3 Closure summary
 
 Re-encoding at a different fps changes the bytes (**G9 fails**) and the duration sum (**G8
 fails**); editing only `manifest.loop.fps` leaves G9 green but changes G8's **expected sum**

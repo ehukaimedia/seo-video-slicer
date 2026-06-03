@@ -159,3 +159,26 @@ def test_invalid_mode_rejected(tmp_path: Path) -> None:
             mode="bogus",
         )
     assert exc.value.status_code == 422
+
+
+@pytest.mark.parametrize("bad_fps", [0, -1, float("nan"), None])
+def test_non_positive_fps_raises_422_before_build(bad_fps, tmp_path: Path) -> None:
+    """The central backstop (spec §6.4a): a non-positive/non-finite/None fps raises
+    ``ApiError(422, "fps must be a positive number")`` BEFORE any extraction/encode/
+    build — so the degenerate ``duration_s=0`` / ``fps_effective=0`` package the gates
+    never caught is rejected at the choke point both CLI and MCP pass through. No node
+    needed (the guard fires before the node-availability check); no package produced."""
+    pkg_dir = tmp_path / "out"
+    with pytest.raises(ApiError) as exc:
+        packager.build_and_verify(
+            slice_dir=_SAMPLE_FRAMES,
+            pkg_dir=pkg_dir,
+            slug="bad-fps",
+            duration_s=0.0,
+            fps_effective=bad_fps,
+            resolution="16x16",
+            origin="test",
+        )
+    assert exc.value.status_code == 422
+    assert exc.value.error == "fps must be a positive number"
+    assert not (pkg_dir / "manifest.json").exists()

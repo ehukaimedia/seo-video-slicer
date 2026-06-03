@@ -39,7 +39,7 @@ from pathlib import Path
 
 from . import packager, slicing
 from .config import DEFAULT_SLICE_SECONDS, WEBP_QUALITY
-from .errors import ApiError, validate_data_subpath
+from .errors import ApiError, validate_data_subpath, validate_fps
 
 log = logging.getLogger("svs.slice_cli")
 
@@ -204,6 +204,9 @@ def _run(args: argparse.Namespace) -> dict:
     exit 2 and the ``{error}`` shape. A built-but-failed-gate package is NOT an
     error here: it comes back in the dict with ``verify.pass == false`` (exit 1).
     """
+    # Front-door fps guard (spec §5.3): a non-positive/non-finite --fps is a hard
+    # input error (exit 2, {error} shape) — reject it before any path/extract work.
+    validate_fps(args.fps)
     quality = max(82, min(90, args.quality))
     path = _validate_path_component(args.path, "path")
     out_dir = _validate_path_component(args.out_dir, "out-dir")
@@ -246,7 +249,8 @@ def _run(args: argparse.Namespace) -> dict:
 
         frame_count = len(basenames)
         # Both ingest paths: source length == loop length == frame_count / fps (§5.2 step 4).
-        duration_s = round(frame_count / args.fps, 3) if args.fps > 0 else 0.0
+        # fps is already guaranteed finite > 0 by the front-door validate_fps above.
+        duration_s = round(frame_count / args.fps, 3)
 
         result = packager.build_and_verify(
             slice_dir=tmp_slice,

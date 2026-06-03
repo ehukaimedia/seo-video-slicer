@@ -13,6 +13,7 @@ This module centralizes:
 
 from __future__ import annotations
 
+import math
 import re
 
 from .config import ID_PATTERN
@@ -58,6 +59,25 @@ def validate_id(value: str, label: str) -> str:
     if not is_valid_id(value):
         raise ApiError(400, f"invalid {label}", f"{label} must match {ID_PATTERN}")
     return value
+
+
+def validate_fps(fps: float | None) -> float:
+    """Return ``fps`` if it is a finite number > 0, else raise a **422** ApiError.
+
+    The shared front-door guard for ``--fps`` / ``fps=`` across every public entry
+    (CLI, both MCP tools) and the central :func:`packager.build_and_verify` choke
+    point. A non-positive or non-finite fps (``0``, negative, ``NaN``, ``inf``,
+    ``None``) is a degenerate input that would otherwise bake a ``duration_s=0`` /
+    ``fps_effective=0`` package the gates do not catch — reject it BEFORE any
+    extraction/encode/build.
+
+    Order is load-bearing: ``None`` is tested first (``math.isfinite(None)`` raises
+    ``TypeError``), and ``isfinite`` before ``<= 0`` (``nan <= 0`` is ``False``, so a
+    bare ``<= 0`` check would let ``NaN`` slip through).
+    """
+    if fps is None or not math.isfinite(fps) or fps <= 0:
+        raise ApiError(422, "fps must be a positive number", f"got {fps!r}")
+    return fps
 
 
 def validate_data_subpath(subpath: str) -> str:

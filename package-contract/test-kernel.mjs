@@ -16,12 +16,19 @@
 //   LOOP
 //     • build a loop package from the sample frames + the committed fixture
 //       package-contract/test-fixtures/loop.webp → verify.mjs PASSES every gate.
-//     • four independent corruptions, each FAILS the MATCHING gate while the
+//     • independent corruptions, each FAILS the MATCHING gate while the
 //       gates it is isolated against stay PASS (the teeth of a gating test):
 //         delete a frame              → G1/G2 FAIL
 //         flip one loop.webp byte     → G9 FAIL, G8 PASS
 //         edit manifest.loop.fps      → G8 FAIL, G9 PASS, G5 PASS
 //         break one ANMF duration sum → G8 FAIL, G9 PASS, G2 PASS
+//       + manifest.loop-block falsification (Finding 2) — G8 now validates the
+//       WHOLE loop block, so a lying loop field FAILs G8:
+//         loop.duration_s=999         → G8 FAIL, G9 PASS, G5 PASS
+//         loop.webp="missing.webp"    → G8 FAIL, G9 PASS, G5 PASS
+//         loop.loop_count=7           → G8 FAIL, G9 PASS, G5 PASS
+//         loop.webp_sha256 uppercase  → G8 FAIL (bad format); isolates against
+//                                       G5/G2 (also fails G9's value compare).
 //
 // Node builtins only (node:child_process, node:crypto, node:fs, node:os, node:path).
 // Scroll sample frames are produced with ffmpeg (a tiny solid-color WebP each);
@@ -468,6 +475,71 @@ const loopBaseline = verify(loopPristine);
 
   checkGate('loop: breaking one ANMF duration (sum) FAILs G8 (G9 + G2 stay PASS)',
     verify(dir), 'G8', ['G9', 'G2']);
+}
+
+// --- LOOP MANIFEST-BLOCK FALSIFICATION (Finding 2) -------------------------
+// G8 now validates the WHOLE manifest.loop block (it already consumed loop.fps),
+// so a manifest that LIES about a loop field G1–G9 never otherwise reads FAILs
+// G8. Each case edits ONLY one loop field on an otherwise-pristine package and
+// leaves loop.webp bytes untouched — so G9 (byte lock) stays PASS for the three
+// field lies, isolating G8 as the gate that catches the manifest lie.
+
+// (5) loop.duration_s = 999 (truth = frames.count/fps = 30/12 = 2.5).
+//     -> G8 FAILs the duration recompute; G9 + G5 (fingerprint is loop-block-
+//     independent) stay PASS.
+{
+  const dir = path.join(work, 'loop-duration-lie');
+  copyDir(loopPristine, dir);
+  const mp = path.join(dir, 'manifest.json');
+  const m = JSON.parse(fs.readFileSync(mp, 'utf8'));
+  m.loop.duration_s = 999;
+  fs.writeFileSync(mp, JSON.stringify(m, null, 2) + '\n');
+  checkGate('loop: falsifying manifest.loop.duration_s FAILs G8 (G9 + G5 stay PASS)',
+    verify(dir), 'G8', ['G9', 'G5']);
+}
+
+// (6) loop.webp = "missing.webp" (frozen filename is "loop.webp").
+//     -> G8 FAILs the frozen-filename assert; G9 (reads the real loop.webp bytes
+//     on disk, sha unchanged) + G5 stay PASS.
+{
+  const dir = path.join(work, 'loop-webp-lie');
+  copyDir(loopPristine, dir);
+  const mp = path.join(dir, 'manifest.json');
+  const m = JSON.parse(fs.readFileSync(mp, 'utf8'));
+  m.loop.webp = 'missing.webp';
+  fs.writeFileSync(mp, JSON.stringify(m, null, 2) + '\n');
+  checkGate('loop: falsifying manifest.loop.webp FAILs G8 (G9 + G5 stay PASS)',
+    verify(dir), 'G8', ['G9', 'G5']);
+}
+
+// (7) loop.loop_count = 7 (frozen value is 0 = infinite).
+//     -> G8 FAILs the loop_count assert; G9 + G5 stay PASS.
+{
+  const dir = path.join(work, 'loop-count-lie');
+  copyDir(loopPristine, dir);
+  const mp = path.join(dir, 'manifest.json');
+  const m = JSON.parse(fs.readFileSync(mp, 'utf8'));
+  m.loop.loop_count = 7;
+  fs.writeFileSync(mp, JSON.stringify(m, null, 2) + '\n');
+  checkGate('loop: falsifying manifest.loop.loop_count FAILs G8 (G9 + G5 stay PASS)',
+    verify(dir), 'G8', ['G9', 'G5']);
+}
+
+// (8) loop.webp_sha256 FORMAT lie — uppercase the real (correct) hex.
+//     G8 requires a LOWERCASE 64-hex string (format check); G9 compares the
+//     VALUE. An uppercase sha is the same value with wrong format, so it FAILs
+//     BOTH G8 (format) and G9 (G9's exact lowercase-hex compare). It therefore
+//     CANNOT isolate against G9 (a format-bad sha that G9 accepts is impossible);
+//     isolate against G5 (fingerprint) + G2 (contiguity) instead — both untouched.
+{
+  const dir = path.join(work, 'loop-sha-format-lie');
+  copyDir(loopPristine, dir);
+  const mp = path.join(dir, 'manifest.json');
+  const m = JSON.parse(fs.readFileSync(mp, 'utf8'));
+  m.loop.webp_sha256 = String(m.loop.webp_sha256).toUpperCase();
+  fs.writeFileSync(mp, JSON.stringify(m, null, 2) + '\n');
+  checkGate('loop: bad-format manifest.loop.webp_sha256 (uppercase) FAILs G8 (G5 + G2 stay PASS)',
+    verify(dir), 'G8', ['G5', 'G2']);
 }
 
 // --- summary ----------------------------------------------------------------

@@ -38,7 +38,7 @@ from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 
 from ..config import MAX_SLICE_SECONDS, WEBP_QUALITY
-from ..errors import ApiError
+from ..errors import ApiError, validate_fps
 from .. import packager, slicing
 
 log = logging.getLogger("svs.mcp")
@@ -135,7 +135,8 @@ def _build_from_slice(
     frame_count = len(sorted(slice_dir.glob("frame_*.webp")))
     if frame_count < 1:
         raise ApiError(422, "no frames", "the slice produced zero frames")
-    duration_s = round(frame_count / fps, 3) if fps > 0 else 0.0
+    # fps is already guaranteed finite > 0 by the front-door validate_fps in each tool.
+    duration_s = round(frame_count / fps, 3)
     pkg_dir = _new_package_dir(slug)
     result = packager.build_and_verify(
         slice_dir=slice_dir,
@@ -179,6 +180,9 @@ def slice_video(
     def _body() -> dict:
         if mode not in ("scroll", "loop"):
             raise ApiError(422, "invalid mode", f"mode must be 'scroll' or 'loop' (got {mode!r})")
+        # Front-door fps guard (spec §7.3): a non-positive/non-finite fps is a non-gate
+        # failure → {error} shape. Validated before path/ffmpeg work (no video needed).
+        validate_fps(fps)
         video = _validate_input_path(path, expect="file")
         begin = start if start is not None else 0.0
         finish = end if end is not None else begin + MAX_SLICE_SECONDS
@@ -219,6 +223,9 @@ def slice_frames(dir: str, fps: float = 12, mode: str = "scroll") -> dict:
     def _body() -> dict:
         if mode not in ("scroll", "loop"):
             raise ApiError(422, "invalid mode", f"mode must be 'scroll' or 'loop' (got {mode!r})")
+        # Front-door fps guard (spec §7.3): a non-positive/non-finite fps is a non-gate
+        # failure → {error} shape. Validated before path/convert work (no frames needed).
+        validate_fps(fps)
         frames_dir = _validate_input_path(dir, expect="dir")
         slug = packager.sanitize_slug(None, frames_dir.name)
         with tempfile.TemporaryDirectory(prefix=_SCRATCH_PREFIX) as scratch:

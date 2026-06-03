@@ -27,7 +27,7 @@ from pathlib import Path
 
 from . import budget, loop_export
 from .config import BUILD_PACKAGE_MJS, FRAME_COUNT_HARD_MAX, VERIFY_MJS, WEBP_QUALITY
-from .errors import ApiError
+from .errors import ApiError, validate_fps
 
 log = logging.getLogger("svs.packager")
 
@@ -92,6 +92,10 @@ def build_and_verify(
     """
     if mode not in ("scroll", "loop"):
         raise ApiError(422, "invalid mode", f"mode must be 'scroll' or 'loop' (got {mode!r})")
+    # Central backstop (spec §6.4a): reject a non-positive/non-finite fps that would
+    # otherwise bake a duration_s=0 / fps_effective=0 package the gates do not catch.
+    # Runs BEFORE any extraction/encode/build so CLI and MCP both pass through it.
+    validate_fps(fps_effective)
     if not _node_available():
         raise ApiError(500, "node not found", "Node.js is required to build the package")
     if not BUILD_PACKAGE_MJS.exists():

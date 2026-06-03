@@ -104,3 +104,20 @@ def test_unorderable_names_error(tmp_path: Path) -> None:
         convert_frames_to_webp(src, dst)
     assert exc.value.status_code == 422
     assert "cover.png" in (exc.value.detail or "")
+
+
+def test_duplicate_trailing_index_error(tmp_path: Path) -> None:
+    """Two files sharing a trailing integer are ambiguous -> 422 naming both."""
+    src, dst = tmp_path / "src", tmp_path / "dst"
+    src.mkdir()
+    _make(src, "element-1.png", 15)
+    _make(src, "other-1.jpg", 30, "JPEG")  # same trailing integer (1) as element-1
+    with pytest.raises(ApiError) as exc:
+        convert_frames_to_webp(src, dst)
+    assert exc.value.status_code == 422
+    assert exc.value.error == "ambiguous frame names"
+    detail = exc.value.detail or ""
+    assert "element-1.png" in detail
+    assert "other-1.jpg" in detail
+    # No partial output: the ambiguous set errors before any frame is written.
+    assert not dst.exists()
