@@ -38,6 +38,91 @@ export SVS_PORT="$PORT"   # /api/share reports this same port
 
 log() { printf '\033[1;36m[start]\033[0m %s\n' "$*"; }
 
+pid_is_this_app() {
+  local pid="$1" cmd cwd
+  cmd="$(ps -p "$pid" -o command= 2>/dev/null || true)"
+  cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' | head -n 1)"
+
+  [[ "$cmd" == *uvicorn* && "$cmd" == *app.main:app* ]] || return 1
+  [[ "$cmd" == *"$ROOT"* || "$cwd" == "$ROOT"* ]] || return 1
+}
+
+stop_existing_app_server() {
+  if ! command -v lsof >/dev/null 2>&1; then
+    log "WARNING: lsof not found; cannot check port $PORT before launch"
+    return 0
+  fi
+
+  local pids pid app_pids foreign_pids still_listening round
+  pids="$(lsof -nP -tiTCP:"$PORT" -sTCP:LISTEN 2>/dev/null | sort -u || true)"
+  if [ -z "$pids" ]; then
+    return 0
+  fi
+
+  app_pids=""
+  foreign_pids=""
+  for pid in $pids; do
+    if pid_is_this_app "$pid"; then
+      app_pids="$app_pids $pid"
+    else
+      foreign_pids="$foreign_pids $pid"
+    fi
+  done
+
+  if [ -n "$foreign_pids" ]; then
+    log "ERROR: port $PORT is already used by another process:$foreign_pids"
+    ps -p $foreign_pids -o pid=,command= 2>/dev/null || true
+    log "Keep port $PORT consistent, or set SVS_PORT to a deliberate alternate port."
+    return 1
+  fi
+
+  log "port $PORT has an existing SEO Video Slicer server; restarting pid(s):$app_pids"
+  kill $app_pids 2>/dev/null || true
+
+  for round in 1 2 3 4 5 6 7 8 9 10; do
+    sleep 0.2
+    still_listening="$(lsof -nP -tiTCP:"$PORT" -sTCP:LISTEN 2>/dev/null | sort -u || true)"
+    if [ -z "$still_listening" ]; then
+      return 0
+    fi
+  done
+
+  log "port $PORT is still held by this app; force-killing pid(s): $(echo "$still_listening" | tr '\n' ' ')"
+  kill -9 $still_listening 2>/dev/null || true
+
+  for round in 1 2 3 4 5; do
+    sleep 0.2
+    still_listening="$(lsof -nP -tiTCP:"$PORT" -sTCP:LISTEN 2>/dev/null | sort -u || true)"
+    if [ -z "$still_listening" ]; then
+      return 0
+    fi
+  done
+
+  log "ERROR: port $PORT is still in use after cleanup"
+  return 1
+}
+
+open_guest_window_when_ready() {
+  local url="$1"
+  [ "${SVS_OPEN_BROWSER:-1}" = "0" ] && return 0
+  [ "$(uname -s)" = "Darwin" ] || return 0
+  command -v open >/dev/null 2>&1 || return 0
+
+  (
+    local round
+    for round in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+      if ! command -v curl >/dev/null 2>&1 || curl -fsS --max-time 1 "$url" >/dev/null 2>&1; then
+        break
+      fi
+      sleep 0.25
+    done
+
+    open -na "Google Chrome" --args --guest "$url" >/dev/null 2>&1 \
+      || open "$url" >/dev/null 2>&1 \
+      || true
+  ) &
+}
+
 # ---------------------------------------------------------------------------
 # 1. Python venv (inherits system cv2 / Pillow / numpy via system-site-packages).
 # ---------------------------------------------------------------------------
@@ -78,7 +163,12 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 4. Reachability URLs. LAN IP detection differs per OS.
+# 4. Restart this app if it already owns the fixed port.
+# ---------------------------------------------------------------------------
+stop_existing_app_server
+
+# ---------------------------------------------------------------------------
+# 5. Reachability URLs. LAN IP detection differs per OS.
 # ---------------------------------------------------------------------------
 case "$(uname -s)" in
   Darwin)
@@ -105,13 +195,15 @@ fi
 
 echo
 log "SEO Video Slicer is starting on port $PORT"
-printf '  Local:     \033[1;32mhttp://localhost:%s\033[0m\n' "$PORT"
+LOCAL_URL="http://localhost:$PORT"
+printf '  Local:     \033[1;32m%s\033[0m\n' "$LOCAL_URL"
 [ -n "${LAN_IP:-}" ]  && printf '  LAN:       \033[1;32mhttp://%s:%s\033[0m\n' "$LAN_IP" "$PORT"
 [ -n "${TS_HOST:-}" ] && printf '  Tailscale: \033[1;32mhttp://%s:%s\033[0m\n' "$TS_HOST" "$PORT"
 echo
+open_guest_window_when_ready "$LOCAL_URL"
 
 # ---------------------------------------------------------------------------
-# 5. Run uvicorn from backend/ so `app.main:app` resolves. Foreground.
+# 6. Run uvicorn from backend/ so `app.main:app` resolves. Foreground.
 # ---------------------------------------------------------------------------
 cd "$ROOT/backend"
 exec "$PY" -m uvicorn app.main:app --host 0.0.0.0 --port "$PORT"
