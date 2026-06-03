@@ -39,7 +39,7 @@ from pathlib import Path
 
 from . import packager, slicing
 from .config import DEFAULT_SLICE_SECONDS, WEBP_QUALITY
-from .errors import ApiError, validate_data_subpath, validate_fps
+from .errors import ApiError, validate_data_subpath, validate_fps, validate_max_width
 
 log = logging.getLogger("svs.slice_cli")
 
@@ -54,20 +54,20 @@ _EPILOG = """\
 signature:
   seo-video-slicer slice <path> --mode scroll|loop --fps <n> \\
       [--start <s>] [--end <s>] [--quality 82-90] \\
-      --out-dir <dir> [--slug <name>] [--json] [--no-verify]
+      [--max-width <px>] --out-dir <dir> [--slug <name>] [--json] [--no-verify]
 
 examples:
   # video -> scroll package (trim 0..3s at 12 fps)
-  seo-video-slicer slice ./hero.mp4 --mode scroll --fps 12 --start 0 --end 3 --out-dir ./pkg
+  seo-video-slicer slice ./hero.mp4 --mode scroll --fps 12 --start 0 --end 3 --max-width 1280 --out-dir ./pkg
 
   # video -> loop package
-  seo-video-slicer slice ./hero.mp4 --mode loop --fps 12 --out-dir ./pkg
+  seo-video-slicer slice ./hero.mp4 --mode loop --fps 12 --max-width 1280 --out-dir ./pkg
 
   # frames-dir (Remotion --sequence) -> scroll package
-  seo-video-slicer slice ./out --mode scroll --fps 12 --out-dir ./pkg
+  seo-video-slicer slice ./out --mode scroll --fps 12 --max-width 1280 --out-dir ./pkg
 
   # frames-dir -> loop package
-  seo-video-slicer slice ./out --mode loop --fps 12 --out-dir ./pkg
+  seo-video-slicer slice ./out --mode loop --fps 12 --max-width 1280 --out-dir ./pkg
 """
 
 
@@ -115,6 +115,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=WEBP_QUALITY,
         help="WebP quality, clamped to 82-90",
+    )
+    parser.add_argument(
+        "--max-width",
+        default=None,
+        help="optional extraction width cap in pixels; preserves aspect and never upscales",
     )
     parser.add_argument(
         "--out-dir",
@@ -207,6 +212,7 @@ def _run(args: argparse.Namespace) -> dict:
     # Front-door fps guard (spec §5.3): a non-positive/non-finite --fps is a hard
     # input error (exit 2, {error} shape) — reject it before any path/extract work.
     validate_fps(args.fps)
+    max_width = validate_max_width(args.max_width)
     quality = max(82, min(90, args.quality))
     path = _validate_path_component(args.path, "path")
     out_dir = _validate_path_component(args.out_dir, "out-dir")
@@ -234,7 +240,9 @@ def _run(args: argparse.Namespace) -> dict:
 
         if is_dir:
             # FRAMES-DIR ingest (§8.2): arbitrary PNG/JPEG/WebP -> contiguous WebP.
-            basenames, resolution = slicing.convert_frames_to_webp(path, tmp_slice, quality)
+            basenames, resolution = slicing.convert_frames_to_webp(
+                path, tmp_slice, quality, max_width=max_width
+            )
             origin = _ORIGIN_FRAMES
         else:
             # VIDEO ingest (§5.2 step 1): extract JPEG preview -> finalize to WebP.
@@ -243,7 +251,9 @@ def _run(args: argparse.Namespace) -> dict:
             start = 0.0 if args.start is None else args.start
             end = DEFAULT_SLICE_SECONDS if args.end is None else args.end
             tmp_preview = tmp_path / "preview"
-            slicing.extract_preview(path, tmp_preview, start, end, args.fps)
+            slicing.extract_preview(
+                path, tmp_preview, start, end, args.fps, max_width=max_width
+            )
             basenames, resolution = slicing.finalize_to_webp(tmp_preview, tmp_slice, [], quality)
             origin = _ORIGIN_VIDEO
 

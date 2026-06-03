@@ -80,6 +80,33 @@ def validate_fps(fps: float | None) -> float:
     return fps
 
 
+def validate_max_width(max_width: int | str | None) -> int | None:
+    """Return a positive integer width cap, or ``None`` when unset.
+
+    Shared front-door guard for the optional headless web-weight lever. The cap is
+    opt-in and applies before packaging, so invalid values should fail before any
+    extraction/encode/build work and use the same structured CLI/MCP error path as
+    the fps guard.
+    """
+    if max_width is None:
+        return None
+    if isinstance(max_width, bool):
+        raise ApiError(422, "max_width must be a positive integer", f"got {max_width!r}")
+    if isinstance(max_width, int):
+        value = max_width
+    elif isinstance(max_width, str):
+        raw = max_width.strip()
+        if not raw or not raw.isdecimal():
+            raise ApiError(422, "max_width must be a positive integer", f"got {max_width!r}")
+        value = int(raw)
+    else:
+        raise ApiError(422, "max_width must be a positive integer", f"got {max_width!r}")
+
+    if value <= 0:
+        raise ApiError(422, "max_width must be a positive integer", f"got {max_width!r}")
+    return value
+
+
 def validate_data_subpath(subpath: str) -> str:
     """Reject a ``/data/…`` sub-path containing traversal before fs access (400).
 

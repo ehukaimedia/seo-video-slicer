@@ -15,10 +15,10 @@ the `ffmpeg` and `node` calls the slicer already makes.
 ## Tools
 
 ```
-slice_video(path, start?, end?, fps=12, mode="scroll"|"loop")
+slice_video(path, start?, end?, fps=12, mode="scroll"|"loop", max_width?)
     -> { package_dir, verify: { pass, gates[] }, loop_webp }
 
-slice_frames(dir, fps=12, mode="scroll"|"loop")
+slice_frames(dir, fps=12, mode="scroll"|"loop", max_width?)
     -> { package_dir, verify: { pass, gates[] }, loop_webp }
 ```
 
@@ -29,6 +29,9 @@ slice_frames(dir, fps=12, mode="scroll"|"loop")
 - `verify.pass` — `true` only if **every** gate passed. `gates[]` is the per-gate
   `{id, pass, detail}` list (G1–G7 for scroll; G1–G9 for loop).
 - `loop_webp` — `"loop.webp"` for loop mode, else `null`.
+- `max_width` — optional positive integer width cap applied before packaging.
+  It preserves aspect ratio and never upscales; `1280` is recommended for
+  web-light hero loops.
 
 ### Error contract (spec §7.3)
 

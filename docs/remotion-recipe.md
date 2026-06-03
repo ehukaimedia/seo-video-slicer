@@ -34,6 +34,7 @@ npm install                 # Remotion (JS) deps
 make setup                  # ./.venv + `pip install -e ../../backend`
 make render-sequence        # npx remotion render HeroLoop out/ --sequence --image-format=png
 make slice-package          # python -m app.cli slice ./out --fps 12 --mode loop --out-dir ./pkg
+make slice-package MAX_WIDTH=1280  # recommended for web-light heroes
 # embed: copy ./pkg into your app's public/ and use index.html (canvas) or loop.webp (<img>)
 ```
 
@@ -41,7 +42,7 @@ The raw commands behind the `make` targets:
 
 ```bash
 npx remotion render HeroLoop out/ --sequence --image-format=png
-.venv/bin/python -m app.cli slice ./out --fps 12 --mode loop --out-dir ./pkg
+.venv/bin/python -m app.cli slice ./out --fps 12 --mode loop --max-width 1280 --out-dir ./pkg
 ```
 
 ### Clean-clone note: use the module form, not the console script
@@ -77,6 +78,14 @@ The package contract hard-caps frames at **200** (`verify.mjs` gate G7 fails
 above it). Keep `durationInFrames` modest; the example uses **90 @ 30 fps** (3 s).
 The slicer's playback `--fps` (e.g. 12) re-times the loop and is independent of
 the render fps / frame count.
+
+## Web-weight cap for heroes
+
+For hero slots, add `--max-width 1280` (or `make slice-package MAX_WIDTH=1280`).
+The cap is opt-in: it downscales only sources wider than the cap, preserves aspect
+ratio, and never upscales narrower renders. Downscaling happens before packaging,
+so the manifest resolution, `seo.total_bytes`, and loop `seo.lcp_safe` report the
+actual shipped bytes.
 
 ## Two-tier embed
 

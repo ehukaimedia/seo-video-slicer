@@ -53,6 +53,17 @@ def _trailing_int(stem: str) -> int | None:
     return int(match.group(1)) if match else None
 
 
+def _resize_if_wider(img: Image.Image, max_width: int | None) -> Image.Image:
+    """Downscale ``img`` to ``max_width`` when wider; preserve aspect, no upscaling."""
+    if max_width is None or img.width <= max_width:
+        return img
+
+    target_height = max(1, round(img.height * (max_width / img.width)))
+    if target_height > 1 and target_height % 2:
+        target_height = max(2, target_height - 1)
+    return img.resize((max_width, target_height), Image.Resampling.LANCZOS)
+
+
 # ---------------------------------------------------------------------------
 # Remotion / frames-dir ingest — arbitrary PNG/JPEG/WebP → contiguous WebP (§8.2).
 # ---------------------------------------------------------------------------
@@ -60,6 +71,7 @@ def convert_frames_to_webp(
     src_dir: Path,
     dst_dir: Path,
     quality: int = WEBP_QUALITY,
+    max_width: int | None = None,
 ) -> tuple[list[str], str]:
     """Convert an arbitrary frames dir → contiguous ``frame_NNN.webp`` (spec §8.2).
 
@@ -70,6 +82,8 @@ def convert_frames_to_webp(
     ``frame_000.webp`` sequence (3-digit, starting at 000 regardless of the source's
     first index) via the existing Pillow primitive
     (``Image.open().convert("RGB").save("WEBP", quality, method=6)``).
+    When ``max_width`` is set, downscales frames wider than the cap with LANCZOS,
+    preserving aspect ratio and never upscaling narrower sources.
 
     Returns ``(webp_basenames, "WIDTHxHEIGHT")``. Raises 422 on an empty/usable-frame-
     free dir, any file whose name carries no trailing integer to order on, or an
@@ -130,7 +144,7 @@ def convert_frames_to_webp(
         dst = dst_dir / f"frame_{new_index:03d}.webp"
         try:
             with Image.open(src) as img:
-                rgb = img.convert("RGB")
+                rgb = _resize_if_wider(img.convert("RGB"), max_width)
                 rgb.save(dst, "WEBP", quality=quality, method=6)
                 if new_index == 0:
                     resolution = f"{rgb.width}x{rgb.height}"
@@ -140,11 +154,12 @@ def convert_frames_to_webp(
         written.append(dst.name)
 
     log.info(
-        "convert_frames_to_webp: %d source frame(s) -> %d WebP at q%d (%s)",
+        "convert_frames_to_webp: %d source frame(s) -> %d WebP at q%d (%s, max_width=%s)",
         len(keyed),
         len(written),
         quality,
         resolution,
+        max_width,
     )
     return written, resolution
 
@@ -153,13 +168,20 @@ def convert_frames_to_webp(
 # Preview — ffmpeg fps-filter JPEG extraction (API.md §6.1).
 # ---------------------------------------------------------------------------
 def extract_preview(
-    video_path: Path, out_dir: Path, start: float, end: float, fps: float
+    video_path: Path,
+    out_dir: Path,
+    start: float,
+    end: float,
+    fps: float,
+    max_width: int | None = None,
 ) -> list[str]:
     """Extract JPEG preview frames for ``[start, end)`` at ``fps`` into ``out_dir``.
 
     Returns the sorted list of ``frame_NNN.jpg`` basenames. Validation of the trim
     range against the contract (start<end, end≤duration, duration≤ceiling, fps>0)
     is the caller's job *up to* the ceiling; this enforces the ceiling defensively.
+    When ``max_width`` is set, ffmpeg downscales wider frames while preserving
+    aspect ratio and never upscaling narrower sources.
     Raises 500 on ffmpeg failure.
     """
     if (end - start) > MAX_SLICE_SECONDS:
@@ -173,6 +195,9 @@ def extract_preview(
 
     out_dir.mkdir(parents=True, exist_ok=True)
     pattern = str(out_dir / "frame_%03d.jpg")
+    vf = f"fps={fps}"
+    if max_width is not None:
+        vf = f"{vf},scale='min({max_width},iw)':-2:flags=lanczos"
     cmd = [
         "ffmpeg",
         "-y",
@@ -183,7 +208,7 @@ def extract_preview(
         "-i",
         str(video_path),
         "-vf",
-        f"fps={fps}",
+        vf,
         "-q:v",
         "2",
         # Zero-index the output (image2 defaults to 1) so basenames are frame_000.jpg…,
@@ -200,7 +225,12 @@ def extract_preview(
     frames = sorted(p.name for p in out_dir.glob("frame_*.jpg"))
     if not frames:
         raise ApiError(500, "ffmpeg produced no frames", "check fps / trim range")
-    log.info("preview: extracted %d frame(s) at fps=%s", len(frames), fps)
+    log.info(
+        "preview: extracted %d frame(s) at fps=%s max_width=%s",
+        len(frames),
+        fps,
+        max_width,
+    )
     return frames
 
 

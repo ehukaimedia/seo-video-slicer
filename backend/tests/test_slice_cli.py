@@ -100,6 +100,27 @@ def test_frames_scroll_exit0_json_shape(
 
 
 @requires_node
+def test_frames_scroll_max_width_updates_manifest_resolution(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    src = tmp_path / "frames"
+    src.mkdir()
+    for i in range(3):
+        Image.new("RGB", (200, 100), (i * 40, 80, 120)).save(src / f"element-{i}.png", "PNG")
+
+    out_dir = tmp_path / "pkg"
+    code, out, _err = _run(
+        [str(src), "--mode", "scroll", "--fps", "12", "--max-width", "80",
+         "--out-dir", str(out_dir), "--json"],
+        capsys,
+    )
+
+    assert code == 0, out
+    manifest = json.loads((out_dir / "manifest.json").read_text())
+    assert manifest["source"]["resolution"] == "80x40"
+
+
+@requires_node
 def test_frames_loop_exit0_is_actually_loop(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -167,6 +188,61 @@ def test_video_scroll_exit0(tmp_path: Path, capsys: pytest.CaptureFixture[str]) 
     assert obj["verify"]["pass"] is True
     assert obj["loop_webp"] is None
     assert (out_dir / "manifest.json").is_file()
+
+
+@requires_node
+@requires_ffmpeg
+def test_video_scroll_max_width_updates_manifest_resolution(
+    test_clip: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    out_dir = tmp_path / "pkg"
+
+    code, out, _err = _run(
+        [str(test_clip), "--mode", "scroll", "--fps", "12", "--max-width", "320",
+         "--out-dir", str(out_dir), "--json"],
+        capsys,
+    )
+
+    assert code == 0, out
+    manifest = json.loads((out_dir / "manifest.json").read_text())
+    assert manifest["source"]["resolution"] == "320x180"
+
+
+@requires_node
+@requires_ffmpeg
+def test_video_loop_max_width_makes_1080p_loop_lighter_and_lcp_safe(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Real video smoke: 1080p loop capped to 1280px is lighter and CWV-honest."""
+    import subprocess
+
+    mp4 = tmp_path / "hero1080.mp4"
+    proc = subprocess.run(
+        ["ffmpeg", "-y", "-f", "lavfi", "-i", "testsrc2=duration=1:size=1920x1080:rate=12",
+         "-pix_fmt", "yuv420p", "-c:v", "libx264", "-preset", "ultrafast", str(mp4)],
+        capture_output=True, text=True, check=False, timeout=120,
+    )
+    assert proc.returncode == 0 and mp4.is_file(), proc.stderr[-800:]
+
+    full_dir = tmp_path / "pkg-full"
+    capped_dir = tmp_path / "pkg-capped"
+    full_code, full_out, _ = _run(
+        [str(mp4), "--mode", "loop", "--fps", "12", "--start", "0", "--end", "1",
+         "--out-dir", str(full_dir), "--json"],
+        capsys,
+    )
+    capped_code, capped_out, _ = _run(
+        [str(mp4), "--mode", "loop", "--fps", "12", "--start", "0", "--end", "1",
+         "--max-width", "1280", "--out-dir", str(capped_dir), "--json"],
+        capsys,
+    )
+
+    assert full_code == 0, full_out
+    assert capped_code == 0, capped_out
+    assert (capped_dir / "loop.webp").stat().st_size < (full_dir / "loop.webp").stat().st_size
+    capped_manifest = json.loads((capped_dir / "manifest.json").read_text())
+    assert capped_manifest["source"]["resolution"] == "1280x720"
+    assert capped_manifest["seo"]["lcp_safe"] is True
 
 
 # ---------------------------------------------------------------------------
@@ -292,6 +368,24 @@ def test_non_positive_fps_exit2_error_shape(
     assert set(obj.keys()) == {"error"}
     assert obj["error"]["code"] == "fps must be a positive number"
     assert not (out_dir / "manifest.json").exists()  # no package produced
+
+
+@pytest.mark.parametrize("bad_width", ["0", "-1", "abc", "1.5"])
+def test_invalid_max_width_exit2_error_shape(
+    bad_width: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Bad --max-width is a hard input error before any path/extract/build work."""
+    out_dir = tmp_path / "pkg"
+    code, out, _err = _run(
+        [str(_SAMPLE_FRAMES), "--mode", "scroll", "--fps", "12",
+         "--max-width", bad_width, "--out-dir", str(out_dir), "--json"],
+        capsys,
+    )
+    assert code == 2
+    obj = _json_stdout(out)
+    assert set(obj.keys()) == {"error"}
+    assert obj["error"]["code"] == "max_width must be a positive integer"
+    assert not (out_dir / "manifest.json").exists()
 
 
 @requires_node

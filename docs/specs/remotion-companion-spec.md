@@ -59,10 +59,10 @@ New, specific to this feature:
 | # | Decision | Chosen | Rationale |
 |---|---|---|---|
 | 1 | MCP server runtime / location / distribution | **Python + FastMCP, in-package at `backend/app/mcp/`, shipped as the optional extra `seo-video-slicer[mcp]`, stdio transport** | Reuses `app.packager` / `app.slicing` directly (no re-shelling); inside the `app` namespace so it imports siblings *and* rides the existing wheel. The `mcp` dep installs only when asked. |
-| 2 | Headless CLI signature | **`slice <path>` with path auto-detect, `--mode scroll\|loop`, `--fps`, video-only `--start/--end`, `--quality`, `--out-dir`, `--slug`, `--json`, `--no-verify`** | Non-interactive, no UI/server. `--start/--end` avoids the kickoff's `--out`/`--out-dir` footgun. `--json` is the machine contract. Exit-code table in §5.3. |
+| 2 | Headless CLI signature | **`slice <path>` with path auto-detect, `--mode scroll\|loop`, `--fps`, video-only `--start/--end`, `--quality`, optional `--max-width`, `--out-dir`, `--slug`, `--json`, `--no-verify`** | Non-interactive, no UI/server. `--start/--end` avoids the kickoff's `--out`/`--out-dir` footgun. `--json` is the machine contract. Exit-code table in §5.3. |
 | 3 | Loop output contract | **New schema `seo-video-slicer.loop-package.v1` + template_id `seo-video-slicer.loop.v1`; the 3-input fingerprint reused verbatim; new gates G8 (loop.webp structure + fps↔duration binding) + G9 (loop.webp content sha)** | `package.v1` cannot represent a loop (it freezes the scroll schema/interaction/template, and the gate enforces them). A parallel schema keeps v1 untouched and both coexist. See §6. |
 | 4 | Remotion ingest | **Accept both a video and a PNG/JPEG/WebP frames-dir (numeric-sorted, renumbered, converted to WebP via Pillow); ship a runnable `examples/remotion/` project + a docs recipe** | Remotion `render --sequence` emits `element-NNNN.png`/JPEG; the kernel expects contiguous WebP. A runnable example makes `render → slice → embed` one command on clone. See §8. |
-| 5 | MCP tool surface | **`slice_video(path,start,end,fps,mode)` and `slice_frames(dir,fps,mode)` → `{package_dir, verify:{pass,gates[]}, loop_webp?}`; stdio; plus a thin Claude Code skill/command wrapper** | Mirrors the two ingest paths; the wrapper adds agent ergonomics. See §7. |
+| 5 | MCP tool surface | **`slice_video(path,start,end,fps,mode,max_width?)` and `slice_frames(dir,fps,mode,max_width?)` → `{package_dir, verify:{pass,gates[]}, loop_webp?}`; stdio; plus a thin Claude Code skill/command wrapper** | Mirrors the two ingest paths; the wrapper adds agent ergonomics. See §7. |
 
 **Sequencing note (conscious inversion).** The kickoff's "Recommended MVP" lists loop *last*; its Phase-0 plan lists the loop contract *first*. This spec builds **loop-first** (Phase 0 = freeze the loop kernel) for contract-first de-risking, as the kickoff's workflow plan dictates. Easily resequenced if shipping the scroll end-to-end path first is preferred.
 
@@ -78,6 +78,7 @@ seo-video-slicer slice <path> \
     --fps <n> \
     [--start <s>] [--end <s>] \
     [--quality 82-90] \
+    [--max-width <px>] \
     --out-dir <dir> \
     [--slug <name>] \
     [--json] [--no-verify]
@@ -88,6 +89,7 @@ seo-video-slicer slice <path> \
 - `--fps` — effective fps. For video, drives extraction; for a frames-dir, sets `source.fps_effective` and the loop frame duration (`perFrameMs(fps) = floor(1000/fps + 0.5)` ms; §6.9, CONTRACT-loop.md §2.1).
 - `--start` / `--end` — trim window in seconds. **Video-only**; supplying them with a frames-dir is an error (loud, not silent).
 - `--quality` — WebP quality, clamped to 82–90 (`config.WEBP_QUALITY`).
+- `--max-width` — optional positive-integer width cap applied during extraction/conversion, before packaging. Preserves aspect ratio, never upscales, and is **off by default**. Docs recommend `--max-width 1280` for web-light heroes.
 - `--out-dir` — directory to write the package into (see §7.6 path stance).
 - `--slug` — package id; sanitized via `packager.sanitize_slug` (kebab-case, 1–64 chars). Defaults to the out-dir basename.
 - `--json` — emit one machine-readable JSON object to stdout (identical to the MCP return shape, §10.2). Without it, a human summary (package path + per-gate PASS/FAIL).
@@ -98,8 +100,8 @@ seo-video-slicer slice <path> \
 
 The CLI reuses the HTTP stack's pure functions over temporary directories — not `Job`/`JobStore`:
 
-1. **Video path:** `slicing.extract_preview(video, tmp_preview, start, end, fps)` → JPEG preview frames (enforces `MAX_SLICE_SECONDS`). Then `slicing.finalize_to_webp(tmp_preview, tmp_slice, excluded=[], quality)` → contiguous WebP frames + `"WIDTHxHEIGHT"`.
-2. **Frames-dir path:** `slicing.convert_frames_to_webp(src_dir, tmp_slice, quality)` (§8.2) → contiguous WebP frames + resolution.
+1. **Video path:** `slicing.extract_preview(video, tmp_preview, start, end, fps, max_width=None)` → JPEG preview frames (enforces `MAX_SLICE_SECONDS`, optional ffmpeg downscale). Then `slicing.finalize_to_webp(tmp_preview, tmp_slice, excluded=[], quality)` → contiguous WebP frames + `"WIDTHxHEIGHT"`.
+2. **Frames-dir path:** `slicing.convert_frames_to_webp(src_dir, tmp_slice, quality, max_width=None)` (§8.2) → contiguous WebP frames + resolution, with optional Pillow LANCZOS downscale.
 3. **Package (both):** `packager.build_and_verify(...)` per §6.4a → result dict `{package_dir, verify:{pass,gates[]}, loop_webp, frame_count, weight_mb, lane, zip_path}`.
 4. **Metadata, computed once:** `fps_effective = fps`; for both ingest paths `source.duration_s = round(frame_count / fps, 3)` (a Remotion frames-dir has no inherent source length, so it equals the loop length); `resolution` from the first WebP.
 
@@ -251,9 +253,9 @@ A **Python** server using **FastMCP** (the official `mcp` SDK), at **`backend/ap
 ### 7.3 Tools & error contract
 
 ```
-slice_video(path: str, start: float|null, end: float|null, fps: float, mode: "scroll"|"loop")
+slice_video(path: str, start: float|null, end: float|null, fps: float, mode: "scroll"|"loop", max_width: int|null)
     -> { package_dir: str, verify: VerifyResult, loop_webp: str|null }
-slice_frames(dir: str, fps: float, mode: "scroll"|"loop")
+slice_frames(dir: str, fps: float, mode: "scroll"|"loop", max_width: int|null)
     -> { package_dir: str, verify: VerifyResult, loop_webp: str|null }
 
 VerifyResult = { pass: bool, gates: [ { id: str, pass: bool, detail: str } ] }
@@ -261,7 +263,7 @@ VerifyResult = { pass: bool, gates: [ { id: str, pass: bool, detail: str } ] }
 
 - `loop_webp` = the `loop.webp` path when `mode="loop"`, else `null`.
 - **Gate failure** (a package built but a gate failed) ⇒ return `verify.pass=false` with the failing gates; the tool call itself succeeds (the agent inspects `verify`).
-- **Non-gate failure** (bad/missing path, empty dir, ffmpeg/node missing, build crash — `packager` raises `ApiError`) ⇒ the tool **catches it and returns a structured error** `{ error: { code, message } }` (or raises `McpError`); nothing leaks to stdout. The CLI mirrors this mapping (`--json` error shape, exit `2`).
+- **Non-gate failure** (bad/missing path, invalid `fps`/`max_width`, empty dir, ffmpeg/node missing, build crash — `packager` raises `ApiError`) ⇒ the tool **catches it and returns a structured error** `{ error: { code, message } }` (or raises `McpError`); nothing leaks to stdout. The CLI mirrors this mapping (`--json` error shape, exit `2`).
 
 ### 7.4 Distribution & registration (both clients)
 
@@ -300,7 +302,7 @@ Remotion `--sequence` names frames `element-NNNN.png` (zero-padded, width depend
 
 1. Globs **`*.png` / `*.jpg` / `*.jpeg` / `*.webp`** (broad; also matches legacy `frame_*`).
 2. Sorts **numerically by the trailing integer** in each filename (so `element-2` precedes `element-10`).
-3. Renumbers to **contiguous `frame_000.webp …`** (3-digit) via the existing Pillow primitive (`Image.open(...).convert("RGB").save(dst, "WEBP", quality=q, method=6)`).
+3. Renumbers to **contiguous `frame_000.webp …`** (3-digit) via the existing Pillow primitive (`Image.open(...).convert("RGB").save(dst, "WEBP", quality=q, method=6)`), optionally downscaling sources wider than `max_width` with LANCZOS first.
 4. Errors clearly on an empty dir, or ambiguous/mixed sets where no consistent integer ordering exists.
 
 This is a standalone helper (not folded into `finalize_to_webp`) so Remotion ingest is decoupled from the JPEG-preview path.
@@ -389,11 +391,11 @@ The kernel `--mode` dispatch and `loop_export.py` land in **Phase 0** (they are 
 
 ## 11.1 Required tests (named)
 
-- `convert_frames_to_webp`: empty dir (error), mixed PNG/JPEG, **numeric sort** on `element-0…element-12`, non-zero first index, renumber-to-contiguous.
+- `convert_frames_to_webp`: empty dir (error), mixed PNG/JPEG, **numeric sort** on `element-0…element-12`, non-zero first index, duplicate trailing index error, renumber-to-contiguous, `max_width` downscale/no-upscale.
 - `loop_export`: **duration sum on real frames** (§6.9: coalescing collapses byte-identical consecutive frames, so assert `SUM(ANMF durations) == frames.count * perFrameMs`, not one-ANMF-per-frame), exact `perFrameMs(fps) = floor(1000/fps + 0.5)`, sha stability.
 - Kernel self-test: scroll **golden-package byte-diff** (every output file, excl. `id`/`created_at`; pinned fingerprint within it — §13); loop build→verify pass; **fps=16 parity** (bytes baked at 63 ms, G8 PASSES) and a **held-frame coalesced loop** (ANMF < frames, sum-based G8 PASSES); corrupt frame / `webp_sha256` / ANMF-duration-sum / manifest-fps each fail the matching gate.
-- CLI: exit-code matrix (§5.3) — gate pass, gate fail, bad input, `--no-verify`.
-- MCP: gate-fail returns `verify.pass=false`; non-gate error returns the structured `error` shape (no stdout leak).
+- CLI: exit-code matrix (§5.3) — gate pass, gate fail, bad input, invalid `--max-width`, `--no-verify`; video/frames `max_width` manifests; 1080p loop cap makes a lighter `loop.webp`.
+- MCP: gate-fail returns `verify.pass=false`; non-gate error returns the structured `error` shape (no stdout leak); `max_width` parity with CLI.
 
 ---
 

@@ -550,10 +550,10 @@
       <thead><tr><th>#</th><th>Decision</th><th>Chosen</th></tr></thead>
       <tbody>
         <tr><td>1</td><td>MCP runtime / location / dist</td><td>Python + FastMCP at <code>backend/app/mcp/</code>; optional extra <code>seo-video-slicer[mcp]</code>; stdio.</td></tr>
-        <tr><td>2</td><td>Headless CLI</td><td><code>slice &lt;path&gt;</code> auto-detect; <code>--mode</code>, <code>--fps</code>, video-only <code>--start/--end</code>, <code>--out-dir</code>, <code>--json</code>, <code>--no-verify</code> (off by default; CI/MCP always verify; <code>verify:{skipped:true}</code> under <code>--json</code>); CLI exit codes per the spec.</td></tr>
+        <tr><td>2</td><td>Headless CLI</td><td><code>slice &lt;path&gt;</code> auto-detect; <code>--mode</code>, <code>--fps</code>, video-only <code>--start/--end</code>, optional <code>--max-width</code> (off by default; docs recommend <code>1280</code> for heroes), <code>--out-dir</code>, <code>--json</code>, <code>--no-verify</code> (off by default; CI/MCP always verify; <code>verify:{skipped:true}</code> under <code>--json</code>); CLI exit codes per the spec.</td></tr>
         <tr><td>3</td><td>Loop contract</td><td>New <code>loop-package.v1</code> + <code>loop.v1</code>; fingerprint reused verbatim; new gates G8/G9.</td></tr>
-        <tr><td>4</td><td>Remotion ingest</td><td>Both video + PNG/JPEG frames (Pillow &rarr; WebP); runnable <code>examples/remotion/</code> + docs recipe.</td></tr>
-        <tr><td>5</td><td>MCP tools</td><td><code>slice_video</code> / <code>slice_frames</code> &rarr; <code>{package_dir, verify, loop_webp?}</code>; + thin CC skill wrapper.</td></tr>
+        <tr><td>4</td><td>Remotion ingest</td><td>Both video + PNG/JPEG frames (Pillow &rarr; WebP); optional pre-package width cap; runnable <code>examples/remotion/</code> + docs recipe.</td></tr>
+        <tr><td>5</td><td>MCP tools</td><td><code>slice_video</code> / <code>slice_frames</code> with optional <code>max_width</code> &rarr; <code>{package_dir, verify, loop_webp?}</code>; + thin CC skill wrapper.</td></tr>
       </tbody>
     </table>
 
@@ -571,16 +571,16 @@
 
     <h3 class="title" style="margin-top: var(--spacing-xl);">Public interfaces</h3>
     <div class="endpoints" aria-label="public interfaces">
-      <div class="row"><span class="m">CLI</span><span class="path">seo-video-slicer slice &lt;path&gt; --mode scroll|loop --fps n [--start s] [--end s] [--quality 82-90] --out-dir d [--slug] [--json] [--no-verify]</span></div>
-      <div class="row"><span class="m">MCP</span><span class="path">slice_video(path, start, end, fps, mode)</span><span class="ret">&rarr; { package_dir, verify:{pass,gates[]}, loop_webp? }</span></div>
-      <div class="row"><span class="m">MCP</span><span class="path">slice_frames(dir, fps, mode)</span><span class="ret">&rarr; { package_dir, verify:{pass,gates[]}, loop_webp? }</span></div>
+      <div class="row"><span class="m">CLI</span><span class="path">seo-video-slicer slice &lt;path&gt; --mode scroll|loop --fps n [--start s] [--end s] [--quality 82-90] [--max-width px] --out-dir d [--slug] [--json] [--no-verify]</span></div>
+      <div class="row"><span class="m">MCP</span><span class="path">slice_video(path, start, end, fps, mode, max_width?)</span><span class="ret">&rarr; { package_dir, verify:{pass,gates[]}, loop_webp? }</span></div>
+      <div class="row"><span class="m">MCP</span><span class="path">slice_frames(dir, fps, mode, max_width?)</span><span class="ret">&rarr; { package_dir, verify:{pass,gates[]}, loop_webp? }</span></div>
       <div class="row"><span class="m">stdio</span><span class="path">python -m app.mcp</span><span class="ret">&rarr; FastMCP over stdio · stdout = JSON-RPC, logs → stderr</span></div>
     </div>
 
     <h3 class="title" style="margin-top: var(--spacing-xl);">Data flow</h3>
     <p class="lede" style="font-size: 0.93rem;">
-      <code>&lt;path&gt;</code> (auto-detect) &rarr; <em>video:</em> <code>extract_preview</code> (ffmpeg) &rarr;
-      <code>finalize_to_webp</code> · <em>frames-dir:</em> <code>convert_frames_to_webp</code> (PNG/JPEG &rarr; WebP)
+      <code>&lt;path&gt;</code> (auto-detect) &rarr; optional <code>max_width</code> validation &rarr; <em>video:</em> <code>extract_preview</code> (ffmpeg fps + optional scale) &rarr;
+      <code>finalize_to_webp</code> · <em>frames-dir:</em> <code>convert_frames_to_webp</code> (PNG/JPEG &rarr; optional Pillow scale &rarr; WebP)
       &rarr; <code>build_and_verify(mode)</code> &rarr; <em>loop:</em> <code>loop_export</code> bakes
       <code>loop.webp</code>, kernel records <code>webp_sha256</code> &rarr; <code>verify.mjs</code> (G1–G9)
       &rarr; <code>{package_dir, verify, loop_webp?}</code>. One linear path. The <strong>CLI</strong> exits non-zero on a gate fail; the <strong>MCP</strong> tools return <code>verify.pass=false</code> with the failing gates (the tool call still succeeds).
@@ -627,8 +627,10 @@
     <table>
       <thead><tr><th>Use</th><th>From (file:line)</th></tr></thead>
       <tbody>
-        <tr><td>Frame extraction (ffmpeg, trim, fps)</td><td><span class="ref">slicing.py:43-92</span></td></tr>
-        <tr><td>JPEG→WebP finalize + reindex + resolution</td><td><span class="ref">slicing.py:98-147</span></td></tr>
+        <tr><td>Width-cap validation</td><td><span class="ref">errors.py:83-107</span></td></tr>
+        <tr><td>Frame extraction (ffmpeg, trim, fps, optional max-width)</td><td><span class="ref">slicing.py:170-229</span></td></tr>
+        <tr><td>Frames-dir conversion (Pillow, optional max-width)</td><td><span class="ref">slicing.py:70-164</span></td></tr>
+        <tr><td>JPEG→WebP finalize + reindex + resolution</td><td><span class="ref">slicing.py:235-291</span></td></tr>
         <tr><td>Package assemble + gate (shells kernel)</td><td><span class="ref">packager.py:54-151</span></td></tr>
         <tr><td>Parse gate output → gates[]</td><td><span class="ref">packager.py:154-186</span></td></tr>
         <tr><td>Budget constants (200 hard cap, q82–90)</td><td><span class="ref">config.py:64-92</span></td></tr>

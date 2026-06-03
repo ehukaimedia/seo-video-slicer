@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Loop output mode** — a new `seo-video-slicer.loop.v1` template: an auto-advancing, time-based `requestAnimationFrame` player plus an animated `loop.webp` export, shipped as a new `seo-video-slicer.loop-package.v1` schema that never touches the frozen `package.v1`. Gated by two new offline checks: **G8** (animated-WebP structure + a coalescing-robust `fps ↔ duration` binding) and **G9** (`loop.webp` content sha256).
   - **MCP server** (`slice_video` / `slice_frames`, stdio) for Claude Code and Codex, installable via the optional `seo-video-slicer[mcp]` extra, with a thin `/slice` command wrapper and registration docs for both clients.
   - **Remotion recipe** — a runnable `examples/remotion/` project plus docs for `render --sequence → slice → embed` (frames-dir ingest accepts both Remotion's default `element-NNNN.png` and `frame_NNN`).
+- **Optional `--max-width` web-weight lever** — downscale video or frames-dir extraction before packaging, preserving aspect ratio and never upscaling. Docs recommend `--max-width 1280` for hero loops that need lighter `loop.webp` bytes.
 
 ### Changed
 

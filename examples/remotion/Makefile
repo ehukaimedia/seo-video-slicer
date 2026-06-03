@@ -13,6 +13,7 @@
 #
 # Prerequisites (system tools, NOT pip deps): node + npx, ffmpeg, python3.
 # Tune the cadence:  make slice-package FPS=24 MODE=scroll
+# Cap hero width:    make slice-package MAX_WIDTH=1280
 
 # Repo backend dir (this Makefile lives in examples/remotion/).
 BACKEND   := ../../backend
@@ -26,6 +27,8 @@ OUT       ?= out
 PKG       ?= pkg
 FPS       ?= 12
 MODE      ?= loop
+MAX_WIDTH ?=
+MAX_WIDTH_ARG := $(if $(MAX_WIDTH),--max-width $(MAX_WIDTH),)
 
 .PHONY: setup render-sequence slice-package all clean
 
@@ -55,7 +58,7 @@ render-sequence:
 # Signature matches the headless CLI (spec §5.1): positional <path>, --mode,
 # --fps, --out-dir.
 slice-package:
-	$(PY) -m app.cli slice ./$(OUT) --fps $(FPS) --mode $(MODE) --out-dir ./$(PKG)
+	$(PY) -m app.cli slice ./$(OUT) --fps $(FPS) --mode $(MODE) $(MAX_WIDTH_ARG) --out-dir ./$(PKG)
 	@echo
 	@echo "Package: ./$(PKG)  (open ./$(PKG)/index.html offline, or use ./$(PKG)/loop.webp)"
 
